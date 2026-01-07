@@ -58,11 +58,11 @@
 - [ ] Create fixtures to verify math and table conversions.
 
 ## Phase 7: Ingestion pipeline and output formatting
-- [ ] Implement `arxiv2md/ingestion.py`:
+- [x] Implement `arxiv2md/ingestion.py`:
   - Orchestrate parse -> fetch -> convert -> section filter.
-- [ ] Implement `arxiv2md/output_formatter.py`:
+- [x] Implement `arxiv2md/output_formatter.py`:
   - Summary, section tree, content aggregation, token estimates.
-- [ ] Wire into `server/query_processor.py` and `server/routers/ingest.py`.
+- [x] Wire into `server/query_processor.py` and `server/routers/ingest.py`.
 
 ## Phase 8: Web UI update
 - [ ] Update `arxiv_form.jinja`:

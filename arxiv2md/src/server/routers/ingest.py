@@ -19,11 +19,11 @@ async def api_ingest(
     request: Request,  # noqa: ARG001 (unused-function-argument) # pylint: disable=unused-argument
     ingest_request: IngestRequest,
 ) -> JSONResponse:
-    """Ingest a Git repository and return processed content.
+    """Ingest an arXiv paper and return processed content.
 
-    **This endpoint processes a Git repository by cloning it, analyzing its structure,**
-    and returning a summary with the repository's content. The response includes
-    file tree structure, processed content, and metadata about the ingestion.
+    **This endpoint processes an arXiv HTML page by fetching and parsing it,**
+    then returns a summary with the paper's content. The response includes
+    section tree structure, processed Markdown, and metadata about the ingestion.
 
     **Parameters**
 
@@ -37,9 +37,13 @@ async def api_ingest(
     response = await _perform_ingestion(
         input_text=ingest_request.input_text,
         max_file_size=ingest_request.max_file_size,
-        pattern_type=ingest_request.pattern_type.value,
+        pattern_type=ingest_request.pattern_type.value if ingest_request.pattern_type else None,
         pattern=ingest_request.pattern,
         token=ingest_request.token,
+        remove_refs=ingest_request.remove_refs,
+        remove_toc=ingest_request.remove_toc,
+        section_filter_mode=ingest_request.section_filter_mode.value,
+        sections=ingest_request.sections,
     )
     return response
 
@@ -54,24 +58,24 @@ async def api_ingest_get(
     pattern: str = "",
     token: str = "",
 ) -> JSONResponse:
-    """Ingest a GitHub repository via GET and return processed content.
+    """Ingest an arXiv paper via GET and return processed content.
 
-    **This endpoint processes a GitHub repository by analyzing its structure and returning a summary**
-    with the repository's content. The response includes file tree structure, processed content, and
-    metadata about the ingestion. All ingestion parameters are optional and can be provided as query parameters.
+    **This endpoint processes an arXiv identifier or URL by fetching and parsing it,**
+    returning processed content and metadata. Parameters are optional and can be
+    provided as query parameters.
 
     **Path Parameters**
-    - **user** (`str`): GitHub username or organization
-    - **repository** (`str`): GitHub repository name
+    - **user** (`str`): arXiv category or prefix (legacy IDs)
+    - **repository** (`str`): arXiv identifier suffix
 
     **Query Parameters**
-    - **max_file_size** (`int`, optional): Maximum file size in KB to include in the digest (default: 5120 KB)
-    - **pattern_type** (`str`, optional): Type of pattern to use ("include" or "exclude", default: "exclude")
-    - **pattern** (`str`, optional): Pattern to include or exclude in the query (default: "")
-    - **token** (`str`, optional): GitHub personal access token for private repositories (default: "")
+    - **max_file_size** (`int`, optional): Deprecated legacy parameter
+    - **pattern_type** (`str`, optional): Deprecated legacy parameter
+    - **pattern** (`str`, optional): Deprecated legacy parameter
+    - **token** (`str`, optional): Deprecated legacy parameter
 
     **Returns**
-    - **JSONResponse**: Success response with ingestion results or error response with appropriate HTTP status code
+    - **JSONResponse**: Success response with ingestion results or error response
     """
     response = await _perform_ingestion(
         input_text=f"{user}/{repository}",
@@ -79,6 +83,10 @@ async def api_ingest_get(
         pattern_type=pattern_type,
         pattern=pattern,
         token=token or None,
+        remove_refs=False,
+        remove_toc=False,
+        section_filter_mode="exclude",
+        sections=[],
     )
     return response
 

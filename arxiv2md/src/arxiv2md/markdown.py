@@ -57,6 +57,16 @@ def convert_html_to_markdown(html: str, *, remove_refs: bool = False, remove_toc
     return "\n\n".join(block for block in blocks if block).strip()
 
 
+def convert_fragment_to_markdown(html: str) -> str:
+    """Convert an HTML fragment into Markdown without title/author/abstract handling."""
+    soup = BeautifulSoup(html, "html.parser")
+    _strip_unwanted_elements(soup)
+    convert_all_mathml_to_latex(soup)
+    fix_tabular_tables(soup)
+    blocks = _serialize_children(soup)
+    return "\n\n".join(block for block in blocks if block).strip()
+
+
 def _find_document_root(soup: BeautifulSoup) -> Tag:
     root = soup.find("article", class_=re.compile(r"ltx_document"))
     if root:

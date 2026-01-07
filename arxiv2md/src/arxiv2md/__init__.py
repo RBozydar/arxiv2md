@@ -1,5 +1,5 @@
-"""Gitingest: A package for ingesting data from Git repositories."""
+"""arxiv2md: ingest arXiv papers into Markdown."""
 
-from gitingest.entrypoint import ingest, ingest_async
+from arxiv2md.ingestion import ingest_paper
 
-__all__ = ["ingest", "ingest_async"]
+__all__ = ["ingest_paper"]

@@ -67,11 +67,28 @@ def _extract_authors(soup: BeautifulSoup) -> list[str]:
     authors_container = soup.find(class_=re.compile(r"ltx_authors"))
     if not authors_container:
         return []
-    authors = [
-        author.get_text(" ", strip=True)
-        for author in authors_container.find_all(class_=re.compile(r"ltx_author"))
-    ]
-    return [author for author in authors if author]
+    author_nodes = authors_container.find_all(
+        lambda tag: tag.name == "span"
+        and "ltx_text" in tag.get("class", [])
+        and "ltx_font_bold" in tag.get("class", [])
+    )
+    if not author_nodes:
+        author_nodes = authors_container.find_all(class_=re.compile(r"ltx_author|ltx_personname"))
+
+    authors: list[str] = []
+    for node in author_nodes:
+        text = _clean_author_text(node)
+        if text and text not in authors:
+            authors.append(text)
+    return authors
+
+
+def _clean_author_text(node: Tag) -> str:
+    clone = BeautifulSoup(str(node), "html.parser")
+    for sup in clone.find_all("sup"):
+        sup.decompose()
+    text = clone.get_text(" ", strip=True)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def _extract_abstract(soup: BeautifulSoup) -> str | None:
@@ -111,6 +128,8 @@ def _iter_headings(root: Tag) -> Iterable[Tag]:
     for heading in root.find_all(_HEADING_RE):
         if heading.find_parent("nav"):
             continue
+        if heading.find_parent(class_=re.compile(r"ltx_abstract")):
+            continue
         yield heading
 
 
@@ -120,16 +139,31 @@ def _is_title_heading(heading: Tag) -> bool:
 
 
 def _collect_section_html(heading: Tag) -> str | None:
+    section = heading.find_parent("section")
+    if not section:
+        return None
+
     parts: list[str] = []
-    for sibling in heading.next_siblings:
-        if isinstance(sibling, Tag) and _HEADING_RE.match(sibling.name or ""):
-            break
-        if isinstance(sibling, NavigableString):
-            text = str(sibling)
+    started = False
+    for child in section.children:
+        if child == heading:
+            started = True
+            continue
+        if not started:
+            continue
+        if isinstance(child, Tag) and child.name == "section":
+            continue
+        if isinstance(child, Tag) and any(
+            cls.startswith("ltx_section") or cls.startswith("ltx_subsection") or cls.startswith("ltx_subsubsection")
+            for cls in child.get("class", [])
+        ):
+            continue
+        if isinstance(child, NavigableString):
+            text = str(child)
             if text.strip():
                 parts.append(text)
             continue
-        if isinstance(sibling, Tag):
-            parts.append(str(sibling))
+        if isinstance(child, Tag):
+            parts.append(str(child))
     html = "".join(parts).strip()
     return html or None

@@ -19,24 +19,35 @@ COMMON_INGEST_RESPONSES: dict[int | str, dict[str, Any]] = {
 
 async def _perform_ingestion(
     input_text: str,
-    max_file_size: int,
-    pattern_type: str,
+    max_file_size: int | None,
+    pattern_type: str | None,
     pattern: str,
     token: str | None,
+    remove_refs: bool,
+    remove_toc: bool,
+    section_filter_mode: str,
+    sections: list[str],
 ) -> JSONResponse:
     """Run ``process_query`` and wrap the result in a ``FastAPI`` ``JSONResponse``.
 
     Consolidates error handling shared by the ``POST`` and ``GET`` ingest endpoints.
     """
     try:
-        pattern_type = PatternType(pattern_type)
+        if pattern_type:
+            pattern_type_enum = PatternType(pattern_type)
+        else:
+            pattern_type_enum = PatternType.EXCLUDE
 
         result = await process_query(
             input_text=input_text,
             max_file_size=max_file_size,
-            pattern_type=pattern_type,
+            pattern_type=pattern_type_enum,
             pattern=pattern,
             token=token,
+            remove_refs=remove_refs,
+            remove_toc=remove_toc,
+            section_filter_mode=section_filter_mode,
+            sections=sections,
         )
 
         if isinstance(result, IngestErrorResponse):
