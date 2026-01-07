@@ -64,9 +64,13 @@ def _extract_title(soup: BeautifulSoup) -> str | None:
 
 
 def _extract_authors(soup: BeautifulSoup) -> list[str]:
-    authors_container = soup.find(class_=re.compile(r"ltx_authors"))
+    authors_container = soup.find("div", class_="ltx_authors")
+    if not authors_container:
+        document_root = _find_document_root(soup)
+        authors_container = document_root.find("div", class_="ltx_authors")
     if not authors_container:
         return []
+
     author_nodes = authors_container.find_all(
         lambda tag: tag.name == "span"
         and "ltx_text" in tag.get("class", [])
@@ -77,18 +81,19 @@ def _extract_authors(soup: BeautifulSoup) -> list[str]:
 
     authors: list[str] = []
     for node in author_nodes:
-        text = _clean_author_text(node)
-        if text and text not in authors:
-            authors.append(text)
+        for text in _clean_author_text(node):
+            if text and text not in authors:
+                authors.append(text)
     return authors
 
 
-def _clean_author_text(node: Tag) -> str:
+def _clean_author_text(node: Tag) -> list[str]:
     clone = BeautifulSoup(str(node), "html.parser")
     for sup in clone.find_all("sup"):
         sup.decompose()
-    text = clone.get_text(" ", strip=True)
-    return re.sub(r"\s+", " ", text).strip()
+    text = clone.get_text("\n", strip=True)
+    parts = [re.sub(r"\s+", " ", part).strip() for part in text.splitlines()]
+    return [part for part in parts if part]
 
 
 def _extract_abstract(soup: BeautifulSoup) -> str | None:
