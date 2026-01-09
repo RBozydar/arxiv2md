@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  arxiv2md:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: arxiv2md
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - ARXIV2MD_CACHE_PATH=/app/.arxiv2md_cache
+      - ARXIV2MD_CACHE_TTL_SECONDS=86400
+      - APP_VERSION=0.1.0
+      - APP_REPOSITORY=https://github.com/timf34/arxiv2md
+    volumes:
+      # Persistent cache
+      - arxiv2md_cache:/app/.arxiv2md_cache
+      # Optional: mount source for development
+      # - ./src:/app/src
+    networks:
+      - arxiv2md_network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=5.0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  arxiv2md_cache:
+    driver: local
+
+networks:
+  arxiv2md_network:
+    driver: bridge

@@ -1,0 +1,61 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Cache
+.arxiv2md_cache/
+
+# Development files
+*.md
+!README.md
+scripts/
+TODO*.md
+AGENTS.md
+PLAN.md
+
+# Deployment files (not needed in container)
+deploy.sh
+update.sh
+nginx.conf
+arxiv2md.service
+railway.toml
+Procfile
+env.example
+.env
+.env.local
+
+# Docker
+docker-compose.yml
+Dockerfile
+.dockerignore

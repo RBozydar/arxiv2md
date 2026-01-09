@@ -1,0 +1,30 @@
+# Systemd service file for arxiv2md
+# Install to: /etc/systemd/system/arxiv2md.service
+
+[Unit]
+Description=arxiv2md - arXiv to Markdown converter
+Documentation=https://github.com/timf34/arxiv2md
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/arxiv2md
+ExecStart=/usr/bin/docker-compose up -d
+ExecStop=/usr/bin/docker-compose down
+ExecReload=/usr/bin/docker-compose restart
+Restart=on-failure
+RestartSec=10s
+
+# Security
+User=root
+Group=docker
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=arxiv2md
+
+[Install]
+WantedBy=multi-user.target

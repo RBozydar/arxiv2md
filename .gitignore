@@ -1,8 +1,31 @@
+# Python
 *.pyc
-/.arxiv2md_cache/
-/.claude/
-/.pytest_cache/
-/*.egg-info/
-/*__pycache__/
 *__pycache__*
 *.egg-info
+__pycache__/
+
+# Cache and temp files
+.arxiv2md_cache/
+*.txt
+!requirements.txt
+
+# Development
+.claude/
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

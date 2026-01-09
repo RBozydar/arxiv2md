@@ -21,7 +21,7 @@ pip install -e .[server]
 
 2) Run the web server from the repo root:
 ```bash
-uvicorn server.main:app --reload --app-dir arxiv2md/src
+uvicorn server.main:app --reload --app-dir src
 ```
 
 3) Open:
@@ -68,8 +68,29 @@ Environment variables (optional):
 ## Tests
 ```bash
 pip install -e .[dev]
-pytest arxiv2md/tests
+pytest tests
 ```
+
+## Deployment
+
+For production deployment to DigitalOcean with Docker, Nginx, and SSL:
+
+**Quick start:**
+```bash
+ssh root@YOUR_DROPLET_IP
+git clone https://github.com/timf34/arxiv2md.git /opt/arxiv2md
+cd /opt/arxiv2md
+chmod +x deploy.sh
+sudo ./deploy.sh
+```
+
+**Documentation:**
+- **Step-by-step guide**: [DEPLOYMENT_STEPS.md](DEPLOYMENT_STEPS.md) - Complete walkthrough
+- **Detailed reference**: [DIGITALOCEAN_DEPLOYMENT.md](DIGITALOCEAN_DEPLOYMENT.md) - Full documentation
+- **Quick commands**: [QUICK_REFERENCE.md](QUICK_REFERENCE.md) - Common operations
+
+**Automated deployment:**
+See [.github/workflows/deploy.yml](.github/workflows/deploy.yml) for GitHub Actions setup.
 
 ## Thanks to...
 
