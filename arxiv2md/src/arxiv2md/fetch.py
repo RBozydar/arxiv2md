@@ -50,6 +50,14 @@ async def _fetch_with_retries(url: str) -> str:
             async with httpx.AsyncClient(timeout=timeout, headers=headers, follow_redirects=True) as client:
                 response = await client.get(url)
 
+            # Check for 404 specifically to provide a better error message
+            if response.status_code == 404:
+                raise RuntimeError(
+                    "This paper does not have an HTML version available on arXiv. "
+                    "arxiv2md requires papers to be available in HTML format. "
+                    "Older papers may only be available as PDF."
+                )
+
             if response.status_code in _RETRY_STATUS:
                 last_exc = RuntimeError(f"HTTP {response.status_code} from arXiv")
             else:
