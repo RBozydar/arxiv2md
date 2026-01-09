@@ -51,6 +51,10 @@ arxiv2md 2501.11120v1 \
   --sections "Abstract,Introduction" \
   -o -
 ```
+Include the section tree before the content:
+```bash
+arxiv2md 2501.11120v1 --include-tree -o -
+```
 
 ## Configuration
 Environment variables (optional):
@@ -66,3 +70,7 @@ Environment variables (optional):
 pip install -e .[dev]
 pytest arxiv2md/tests
 ```
+
+## Thanks to...
+
+Gitingest for paving the way and being a great tool! https://github.com/coderamp-labs/gitingest
