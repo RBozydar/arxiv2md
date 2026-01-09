@@ -10,6 +10,7 @@ from arxiv2md.schemas import IngestionResult
 from arxiv2md.sections import filter_sections
 
 _REFERENCE_TITLES = ("references", "bibliography")
+_ABSTRACT_TITLE = "abstract"
 
 
 async def ingest_paper(
@@ -38,6 +39,13 @@ async def ingest_paper(
     if remove_refs:
         filtered_sections = filter_sections(filtered_sections, mode="exclude", selected=_REFERENCE_TITLES)
 
+    # Check if abstract should be included based on section filter
+    selected_lower = [s.lower() for s in sections]
+    if section_filter_mode == "exclude":
+        include_abstract = _ABSTRACT_TITLE not in selected_lower
+    else:  # include mode
+        include_abstract = not sections or _ABSTRACT_TITLE in selected_lower
+
     for section in filtered_sections:
         _populate_section_markdown(section, remove_inline_citations=remove_inline_citations)
 
@@ -46,9 +54,10 @@ async def ingest_paper(
         version=version,
         title=parsed.title,
         authors=parsed.authors,
-        abstract=parsed.abstract,
+        abstract=parsed.abstract if include_abstract else None,
         sections=filtered_sections,
         include_toc=not remove_toc,
+        include_abstract_in_tree=parsed.abstract is not None,
     )
 
     metadata = {

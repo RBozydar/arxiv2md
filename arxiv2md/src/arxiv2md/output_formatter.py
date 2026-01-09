@@ -21,9 +21,14 @@ def format_paper(
     abstract: str | None,
     sections: list[SectionNode],
     include_toc: bool,
+    include_abstract_in_tree: bool = True,
 ) -> IngestionResult:
     """Create summary, section tree, and content."""
-    tree = "Sections:\n" + _create_sections_tree(sections)
+    tree_lines = ["Sections:"]
+    if include_abstract_in_tree:
+        tree_lines.append("Abstract")
+    tree_lines.append(_create_sections_tree(sections))
+    tree = "\n".join(tree_lines)
     content = _render_content(abstract=abstract, sections=sections, include_toc=include_toc)
 
     summary_lines = []

@@ -57,7 +57,11 @@ async def _async_main(args: argparse.Namespace) -> None:
         Path(output_target).write_text(output_text, encoding="utf-8")
         print(f"Output written to: {output_target}")
         print("\nSummary:")
-        print(result.summary)
+        # Handle Unicode characters that Windows console may not support
+        try:
+            print(result.summary)
+        except UnicodeEncodeError:
+            print(result.summary.encode("utf-8", errors="replace").decode("utf-8"))
 
 
 def _format_output(summary: str, tree: str, content: str, *, include_tree: bool) -> str:

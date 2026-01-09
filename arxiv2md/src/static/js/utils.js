@@ -31,26 +31,30 @@ function toggleFile(element) {
     const sectionsInput = document.getElementById('sections');
     const patternInput = document.getElementById('pattern');
     const filterInput = sectionsInput || patternInput;
-    const filterValues = filterInput && filterInput.value ? filterInput.value.split(',').map((item) => item.trim()) : [];
+    const filterValues = filterInput && filterInput.value ? filterInput.value.split(',').map((item) => item.trim()).filter((item) => item.length > 0) : [];
     const isSectionsMode = Boolean(sectionsInput);
-    const directoryContainer = document.getElementById('directory-structure-container');
-    if (!directoryContainer || !filterInput) {return;}
-    const treeLineElements = Array.from(directoryContainer.children).filter((child) => child.tagName === 'PRE');
 
-    // Skip the header lines
+    // Get tree line elements from the correct container
+    const directoryPre = document.getElementById('directory-structure-pre');
+    if (!directoryPre || !filterInput) {return;}
+    const treeLineElements = Array.from(directoryPre.querySelectorAll('pre[name="tree-line"]'));
+
+    // Skip the header line ("Sections:")
     const skipCount = isSectionsMode ? 1 : 2;
     if (treeLineElements.indexOf(element) < skipCount) {return;}
 
     element.classList.toggle('line-through');
     element.classList.toggle('text-gray-500');
 
-    const fileName = isSectionsMode ? element.textContent.trim() : getFileName(element);
-    const fileIndex = filterValues.indexOf(fileName);
+    // Extract the section title (remove leading indentation/bullets)
+    const rawText = element.textContent;
+    const sectionTitle = isSectionsMode ? rawText.replace(/^[\s-]+/, '').trim() : getFileName(element);
+    const fileIndex = filterValues.indexOf(sectionTitle);
 
     if (fileIndex !== -1) {
         filterValues.splice(fileIndex, 1);
     } else {
-        filterValues.push(fileName);
+        filterValues.push(sectionTitle);
     }
 
     filterInput.value = filterValues.join(', ');
@@ -133,6 +137,7 @@ function collectFormData(form) {
     const pattern = document.getElementById('pattern');
     const removeRefs = form.querySelector('[name="remove_refs"]');
     const removeToc = form.querySelector('[name="remove_toc"]');
+    const removeInlineCitations = form.querySelector('[name="remove_inline_citations"]');
     const sectionFilterMode = form.querySelector('[name="section_filter_mode"]');
     const sectionsInput = form.querySelector('[name="sections"]');
 
@@ -143,6 +148,7 @@ function collectFormData(form) {
     if (pattern) {json_data.pattern = pattern.value;}
     if (removeRefs) {json_data.remove_refs = removeRefs.checked;}
     if (removeToc) {json_data.remove_toc = removeToc.checked;}
+    if (removeInlineCitations) {json_data.remove_inline_citations = removeInlineCitations.checked;}
     if (sectionFilterMode) {json_data.section_filter_mode = sectionFilterMode.value;}
     if (sectionsInput) {
         json_data.sections = sectionsInput.value
