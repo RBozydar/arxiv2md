@@ -15,9 +15,9 @@ MAX_FILE_SIZE_KB: int = 100 * 1024  # 100 mb
 
 EXAMPLE_REPOS: list[dict[str, str]] = [
     {"name": "Attention Is All You Need", "url": "https://arxiv.org/abs/1706.03762"},
-    {"name": "BERT", "url": "https://arxiv.org/abs/1810.04805"},
-    {"name": "GPT-3", "url": "https://arxiv.org/abs/2005.14165"},
-    {"name": "ResNet", "url": "https://arxiv.org/abs/1512.03385"},
+    {"name": "Subliminal Learning", "url": "https://arxiv.org/abs/2507.14805"},
+    {"name": "GPT-4", "url": "https://arxiv.org/abs/2303.08774"},
+    {"name": "Emergent Misalignment", "url": "https://arxiv.org/abs/2502.17424"},
 ]
 
 
