@@ -1,1 +1,5 @@
 *.pyc
+/.arxiv2md_cache/
+/.claude/
+/.pytest_cache/
+/*.egg-info/
