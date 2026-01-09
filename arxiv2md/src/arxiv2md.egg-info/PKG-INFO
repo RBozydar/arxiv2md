@@ -92,3 +92,7 @@ Environment variables (optional):
 pip install -e .[dev]
 pytest arxiv2md/tests
 ```
+
+## Thanks to...
+
+Gitingest for paving the way and being a great tool! https://github.com/coderamp-labs/gitingest

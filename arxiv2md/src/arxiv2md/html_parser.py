@@ -17,6 +17,10 @@ except ImportError as exc:  # pragma: no cover - runtime dependency check
 
 
 _HEADING_RE = re.compile(r"^h[1-6]$")
+_EMAIL_RE = re.compile(r"^[\w.+-]+@[\w.-]+\.\w+$")
+# Keywords that indicate footnotes or contribution statements (case-insensitive check)
+_SKIP_KEYWORDS = {"footnotemark:", "equal contribution", "work performed", "listing order"}
+_MAX_AUTHOR_PART_LENGTH = 80  # Filter out long contribution statements
 
 
 @dataclass
@@ -88,12 +92,44 @@ def _extract_authors(soup: BeautifulSoup) -> list[str]:
 
 
 def _clean_author_text(node: Tag) -> list[str]:
+    """Extract clean author names/affiliations, filtering out emails and footnotes."""
     clone = BeautifulSoup(str(node), "html.parser")
+    # Remove superscripts (footnote markers)
     for sup in clone.find_all("sup"):
         sup.decompose()
+    # Remove note elements
+    for note in clone.find_all(class_=re.compile(r"ltx_note|ltx_role_footnote")):
+        note.decompose()
+
     text = clone.get_text("\n", strip=True)
     parts = [re.sub(r"\s+", " ", part).strip() for part in text.splitlines()]
-    return [part for part in parts if part]
+
+    cleaned: list[str] = []
+    for part in parts:
+        if not part:
+            continue
+        # Strip leading & (author separator in some papers)
+        part = part.lstrip("&").strip()
+        if not part:
+            continue
+        # Skip emails
+        if _EMAIL_RE.match(part):
+            continue
+        # Skip pure numbers (footnote references)
+        if part.isdigit():
+            continue
+        # Skip footnote markers and contribution keywords
+        part_lower = part.lower()
+        if any(marker in part_lower for marker in _SKIP_KEYWORDS):
+            continue
+        # Skip very long text (likely contribution statements)
+        if len(part) > _MAX_AUTHOR_PART_LENGTH:
+            continue
+        # Skip text that looks like a sentence (contains multiple periods or common sentence patterns)
+        if part.count(".") > 1 or (part.endswith(".") and len(part) > 40):
+            continue
+        cleaned.append(part)
+    return cleaned
 
 
 def _extract_abstract(soup: BeautifulSoup) -> str | None:
