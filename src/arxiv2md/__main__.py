@@ -82,7 +82,7 @@ def _collect_sections(sections_csv: str | None, section_list: list[str] | None) 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="arxiv2md",
-        description="Convert arXiv HTML to Markdown for LLM contexts.",
+        description="Convert arXiv papers to clean Markdown. Particularly useful for prompting LLMs.",
     )
     parser.add_argument(
         "input_text",

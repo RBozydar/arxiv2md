@@ -1,7 +1,7 @@
 [project]
 name = "arxiv2md"
 version = "0.1.0"
-description = "Convert arXiv HTML papers into Markdown for LLM context windows."
+description = "Convert arXiv papers to clean Markdown. Particularly useful for prompting LLMs."
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
 dependencies = [
