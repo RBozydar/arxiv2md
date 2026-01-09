@@ -1,23 +1,34 @@
 <footer class="w-full border-t-[3px] border-gray-900 mt-auto bg-white">
     <div class="max-w-4xl mx-auto px-4 py-4">
-        <div class="flex justify-between items-center text-gray-700 text-sm">
-            {# Left - Project info #}
-            <div class="flex items-center space-x-2">
-                <span>arxiv2md</span>
-                <span class="text-gray-400">|</span>
-                <span>Convert arXiv papers to Markdown</span>
+        <div class="flex flex-col gap-2">
+            {# Top row: Project info and version #}
+            <div class="flex justify-between items-center text-gray-700 text-sm">
+                {# Left - Project info #}
+                <div class="flex items-center space-x-2">
+                    <span>arxiv2md</span>
+                    <span class="text-gray-400">|</span>
+                    <span>Convert arXiv papers to Markdown</span>
+                </div>
+                {# Right - Version #}
+                <div class="flex items-center">
+                    <span>Version:&nbsp;</span>
+                    {% if version and version != "unknown" %}
+                        <a href="{{ version_link }}"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="text-[#B31B1B] hover:text-[#8B1515] underline">{{ version }}</a>
+                    {% else %}
+                        <span>{{ version or "dev" }}</span>
+                    {% endif %}
+                </div>
             </div>
-            {# Right - Version #}
-            <div class="flex items-center">
-                <span>Version:&nbsp;</span>
-                {% if version and version != "unknown" %}
-                    <a href="{{ version_link }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="text-[#B31B1B] hover:text-[#8B1515] underline">{{ version }}</a>
-                {% else %}
-                    <span>{{ version or "dev" }}</span>
-                {% endif %}
+            {# Bottom row: Hat tip #}
+            <div class="text-gray-600 text-xs text-center">
+                Inspired by 
+                <a href="https://github.com/coderamp-labs/gitingest"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="text-[#B31B1B] hover:text-[#8B1515] underline">gitingest</a>!
             </div>
         </div>
     </div>
