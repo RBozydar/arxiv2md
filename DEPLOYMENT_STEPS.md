@@ -102,7 +102,7 @@ The script will:
 
 ### Check application health
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8001/health
 ```
 
 ### Check Docker containers

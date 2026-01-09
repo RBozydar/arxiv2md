@@ -17,5 +17,13 @@
     {% with show_examples=true %}
         {% include 'components/arxiv_form.jinja' %}
     {% endwith %}
+
+    {# URL tip #}
+    <div class="mt-6 text-center">
+        <p class="text-sm text-gray-600">
+            You can also append <span class="font-mono text-[#B31B1B]">'2md'</span> to any arXiv paper URL!
+        </p>
+    </div>
+
     {% include 'components/result_arxiv.jinja' %}
 {% endblock content %}

@@ -25,7 +25,7 @@ docker-compose up -d
 
 echo -e "${YELLOW}[4/4] Checking health...${NC}"
 sleep 5
-curl -f http://localhost:8000/health && echo -e "\n${GREEN}Update complete!${NC}" || echo -e "\n${RED}Health check failed!${NC}"
+curl -f http://localhost:8001/health && echo -e "\n${GREEN}Update complete!${NC}" || echo -e "\n${RED}Health check failed!${NC}"
 
 echo ""
 echo -e "${GREEN}View logs with: docker-compose logs -f${NC}"

@@ -65,7 +65,7 @@ The script will:
 docker-compose ps
 
 # Check application health
-curl http://localhost:8000/health
+curl http://localhost:8001/health
 
 # Check Nginx
 systemctl status nginx
@@ -118,7 +118,7 @@ sudo docker-compose build
 sudo docker-compose up -d
 
 # Check health
-curl http://localhost:8000/health
+curl http://localhost:8001/health
 ```
 
 ### 6. Configure Nginx

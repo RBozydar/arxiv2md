@@ -95,7 +95,7 @@ echo -e "${YELLOW}Waiting for application to start...${NC}"
 sleep 10
 
 # Test health endpoint
-if curl -f http://localhost:8000/health > /dev/null 2>&1; then
+if curl -f http://localhost:8001/health > /dev/null 2>&1; then
     echo -e "${GREEN}Application is healthy!${NC}"
 else
     echo -e "${RED}Warning: Health check failed. Check logs with: docker-compose logs${NC}"
@@ -170,7 +170,7 @@ echo -e "  View logs:           ${YELLOW}docker-compose logs -f${NC}"
 echo -e "  Restart:             ${YELLOW}systemctl restart arxiv2md${NC}"
 echo -e "  Stop:                ${YELLOW}systemctl stop arxiv2md${NC}"
 echo -e "  Nginx reload:        ${YELLOW}systemctl reload nginx${NC}"
-echo -e "  Check health:        ${YELLOW}curl http://localhost:8000/health${NC}"
+echo -e "  Check health:        ${YELLOW}curl http://localhost:8001/health${NC}"
 echo ""
 if [ -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
     echo -e "${GREEN}Your site is available at: https://$DOMAIN${NC}"

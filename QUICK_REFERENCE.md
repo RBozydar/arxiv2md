@@ -68,7 +68,7 @@ docker-compose up -d
 
 # Check health
 sleep 5
-curl http://localhost:8000/health
+curl http://localhost:8001/health
 ```
 
 ## SSL Certificate

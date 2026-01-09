@@ -27,7 +27,7 @@ jobs:
             docker-compose build
             docker-compose up -d
             sleep 5
-            curl -f http://localhost:8000/health || echo "Health check failed"
+            curl -f http://localhost:8001/health || echo "Health check failed"
             docker-compose logs --tail=50
 
       - name: Notify deployment status
