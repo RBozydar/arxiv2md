@@ -1,12 +1,21 @@
-{% extends "base.jinja" %}
+{% extends "base_arxiv.jinja" %}
 {% block content %}
+    {# Landing section #}
+    <div class="mb-8 text-center">
+        <h1 class="text-4xl sm:text-5xl font-bold tracking-tight text-gray-900 mb-4">
+            arXiv papers to <span class="text-[#B31B1B]">Markdown</span>
+        </h1>
+        <p class="text-lg text-gray-600 max-w-2xl mx-auto">
+            Convert arXiv HTML papers into clean Markdown for LLM context windows.
+        </p>
+    </div>
     {% if error_message %}
         <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700"
              id="error-message"
              data-message="{{ error_message }}">{{ error_message }}</div>
     {% endif %}
-    {% with show_examples=false %}
+    {% with show_examples=true %}
         {% include 'components/arxiv_form.jinja' %}
     {% endwith %}
-    {% include 'components/result.jinja' %}
+    {% include 'components/result_arxiv.jinja' %}
 {% endblock content %}

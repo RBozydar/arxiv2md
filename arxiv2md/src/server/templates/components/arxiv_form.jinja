@@ -1,13 +1,11 @@
 <div class="relative">
-    <div class="w-full h-full absolute inset-0 bg-gray-900 rounded-xl translate-y-2 translate-x-2"></div>
-    <div class="rounded-xl relative z-20 p-8 sm:p-10 border-[3px] border-gray-900 bg-[#fff4da]">
-        <img src="https://cdn.devdojo.com/images/january2023/shape-1.png"
-             class="absolute md:block hidden left-0 h-[4.5rem] w-[4.5rem] bottom-0 -translate-x-full ml-3">
+    <div class="w-full h-full absolute inset-0 bg-[#B31B1B] rounded-xl translate-y-2 translate-x-2"></div>
+    <div class="rounded-xl relative z-20 p-8 sm:p-10 border-[3px] border-gray-900 bg-white">
         <!-- Ingest Form -->
         <form id="ingestForm" method="post" onsubmit="handleSubmit(event, true)">
-            <!-- Top row: repo URL + Ingest button -->
+            <!-- Top row: paper URL + Ingest button -->
             <div class="flex md:flex-row flex-col w-full h-full justify-center items-stretch space-y-5 md:space-y-0 md:space-x-5">
-                <!-- Repository URL Input -->
+                <!-- Paper URL Input -->
                 <div class="relative w-full h-full">
                     <div class="w-full h-full rounded bg-gray-900 translate-y-1 translate-x-1 absolute inset-0 z-10"></div>
                     <input type="text"
@@ -16,13 +14,13 @@
                            placeholder="https://arxiv.org/abs/2501.11120v1 or 2501.11120v1"
                            value="{{ repo_url if repo_url else '' }}"
                            required
-                           class="border-[3px] w-full relative z-20 border-gray-900 placeholder-gray-600 text-lg font-medium focus:outline-none py-3.5 px-6 rounded bg-[#E8F0FE]">
+                           class="border-[3px] w-full relative z-20 border-gray-900 placeholder-gray-500 text-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#B31B1B] py-3.5 px-6 rounded bg-gray-50">
                 </div>
                 <!-- Ingest button -->
                 <div class="relative w-auto flex-shrink-0 h-full group">
                     <div class="w-full h-full rounded bg-gray-800 translate-y-1 translate-x-1 absolute inset-0 z-10"></div>
                     <button type="submit"
-                            class="py-3.5 rounded px-6 group-hover:-translate-y-px group-hover:-translate-x-px ease-out duration-300 z-20 relative w-full border-[3px] border-gray-900 font-medium bg-[#ffc480] tracking-wide text-lg flex-shrink-0 text-gray-900">
+                            class="py-3.5 rounded px-6 group-hover:-translate-y-px group-hover:-translate-x-px ease-out duration-300 z-20 relative w-full border-[3px] border-gray-900 font-medium bg-[#B31B1B] tracking-wide text-lg flex-shrink-0 text-white hover:bg-[#8B1515] transition-colors">
                         Ingest
                     </button>
                 </div>
@@ -32,13 +30,13 @@
                  class="mt-7 grid gap-6 grid-cols-1 lg:grid-cols-[3fr_2fr]">
                 <!-- Section filter -->
                 <div class="w-full relative self-center">
-                    <label for="sections" class="block text-gray-700 mb-1">Section filter</label>
+                    <label for="sections" class="block text-gray-700 mb-1 font-medium">Section filter</label>
                     <div class="w-full h-full rounded bg-gray-900 translate-y-1 translate-x-1 absolute inset-0 z-10"></div>
                     <div class="flex relative z-20 border-[3px] border-gray-900 rounded bg-white">
                         <div class="relative flex items-center">
                             <select id="section_filter_mode"
                                     name="section_filter_mode"
-                                    class="pattern-select">
+                                    class="min-w-max appearance-none pr-6 pl-2 py-2 bg-gray-100 border-r-[3px] border-gray-900 cursor-pointer focus:outline-none">
                                 <option value="exclude">Exclude</option>
                                 <option value="include">Include</option>
                             </select>
@@ -57,46 +55,56 @@
                                id="sections"
                                name="sections"
                                placeholder="Abstract, Introduction, Methods"
-                               class="py-2 px-2 bg-[#E8F0FE] focus:outline-none w-full">
+                               class="py-2 px-2 bg-gray-50 focus:outline-none w-full">
                     </div>
-                    <p class="text-sm text-gray-700 mt-2">Comma-separated titles. Click sections below to toggle.</p>
+                    <p class="text-sm text-gray-600 mt-2">Comma-separated titles. Click sections below to toggle.</p>
                 </div>
                 <!-- Output toggles -->
                 <div class="flex flex-col gap-4 justify-center">
-                    <label for="remove_refs" class="flex items-center gap-3 text-gray-900 cursor-pointer">
+                    <label for="remove_refs" class="flex items-center gap-3 text-gray-900 cursor-pointer hover:text-[#B31B1B] transition-colors">
                         <span class="relative w-6 h-6">
                             <input type="checkbox"
                                    id="remove_refs"
                                    name="remove_refs"
                                    class="cursor-pointer peer appearance-none w-full h-full rounded-sm border-[3px] border-current bg-white m-0 text-current shadow-[3px_3px_0_currentColor]" />
-                            <span class="absolute inset-0 w-3 h-3 m-auto scale-0 transition-transform duration-150 ease-in-out shadow-[inset_1rem_1rem_#FE4A60] bg-[CanvasText] origin-bottom-left peer-checked:scale-100"
+                            <span class="absolute inset-0 w-3 h-3 m-auto scale-0 transition-transform duration-150 ease-in-out shadow-[inset_1rem_1rem_#B31B1B] bg-[CanvasText] origin-bottom-left peer-checked:scale-100"
                                   style="clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%)"></span>
                         </span>
-                        Remove references
+                        Remove references section
                     </label>
-                    <label for="remove_toc" class="flex items-center gap-3 text-gray-900 cursor-pointer">
+                    <label for="remove_toc" class="flex items-center gap-3 text-gray-900 cursor-pointer hover:text-[#B31B1B] transition-colors">
                         <span class="relative w-6 h-6">
                             <input type="checkbox"
                                    id="remove_toc"
                                    name="remove_toc"
                                    class="cursor-pointer peer appearance-none w-full h-full rounded-sm border-[3px] border-current bg-white m-0 text-current shadow-[3px_3px_0_currentColor]" />
-                            <span class="absolute inset-0 w-3 h-3 m-auto scale-0 transition-transform duration-150 ease-in-out shadow-[inset_1rem_1rem_#FE4A60] bg-[CanvasText] origin-bottom-left peer-checked:scale-100"
+                            <span class="absolute inset-0 w-3 h-3 m-auto scale-0 transition-transform duration-150 ease-in-out shadow-[inset_1rem_1rem_#B31B1B] bg-[CanvasText] origin-bottom-left peer-checked:scale-100"
                                   style="clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%)"></span>
                         </span>
                         Remove table of contents
                     </label>
+                    <label for="remove_inline_citations" class="flex items-center gap-3 text-gray-900 cursor-pointer hover:text-[#B31B1B] transition-colors">
+                        <span class="relative w-6 h-6">
+                            <input type="checkbox"
+                                   id="remove_inline_citations"
+                                   name="remove_inline_citations"
+                                   class="cursor-pointer peer appearance-none w-full h-full rounded-sm border-[3px] border-current bg-white m-0 text-current shadow-[3px_3px_0_currentColor]" />
+                            <span class="absolute inset-0 w-3 h-3 m-auto scale-0 transition-transform duration-150 ease-in-out shadow-[inset_1rem_1rem_#B31B1B] bg-[CanvasText] origin-bottom-left peer-checked:scale-100"
+                                  style="clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%)"></span>
+                        </span>
+                        Remove inline citations
+                    </label>
                 </div>
             </div>
         </form>
-        <!-- Example repositories section -->
+        <!-- Example papers section -->
         {% if show_examples %}
-            <div id="exampleRepositories"
-                 class="{% if token %}lg:mt-0 {% endif %} mt-4">
-                <p class="opacity-70 mb-1">Try these example papers:</p>
+            <div id="examplePapers" class="mt-6">
+                <p class="text-gray-600 mb-2 font-medium">Try these example papers:</p>
                 <div class="flex flex-wrap gap-2">
                     {% for example in examples %}
                         <button onclick="submitExample('{{ example.url }}')"
-                                class="px-4 py-1 bg-[#EBDBB7] hover:bg-[#FFC480] text-gray-900 rounded transition-colors duration-200 border-[3px] border-gray-900 relative hover:-translate-y-px hover:-translate-x-px">
+                                class="px-4 py-1.5 bg-gray-100 hover:bg-[#B31B1B] hover:text-white text-gray-900 rounded transition-colors duration-200 border-[3px] border-gray-900 relative hover:-translate-y-px hover:-translate-x-px">
                             {{ example.name }}
                         </button>
                     {% endfor %}

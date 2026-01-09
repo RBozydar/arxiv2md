@@ -1,0 +1,2 @@
+[console_scripts]
+arxiv2md = arxiv2md.__main__:main

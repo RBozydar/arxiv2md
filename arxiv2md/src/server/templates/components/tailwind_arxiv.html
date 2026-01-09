@@ -1,0 +1,82 @@
+<style type="text/tailwindcss">
+  @layer components {
+    /* arXiv red color palette */
+    /* Primary: #B31B1B */
+    /* Light: #D64545 */
+    /* Dark: #8B1515 */
+
+    .badge-new {
+      @apply inline-block -rotate-6 -translate-y-1 mx-1 px-1 bg-[#B31B1B] border border-gray-900 text-white text-[10px] font-bold shadow-[2px_2px_0_0_rgba(0,0,0,1)];
+    }
+
+    .landing-page-title {
+      @apply inline-block w-full relative text-center text-4xl sm:text-5xl md:text-6xl lg:text-7xl sm:pt-20 lg:pt-5 font-bold tracking-tighter;
+    }
+
+    .intro-text {
+      @apply text-center text-gray-600 text-lg max-w-2xl mx-auto;
+    }
+
+    .pattern-select {
+      @apply min-w-max appearance-none pr-6 pl-2 py-2 bg-gray-100 border-r-[3px] border-gray-900 cursor-pointer focus:outline-none;
+    }
+
+    /* arxiv2md button styles */
+    .btn-primary {
+      @apply px-4 py-2 bg-[#B31B1B] border-[3px] border-gray-900 text-white rounded font-medium;
+      @apply hover:bg-[#8B1515] transition-colors;
+    }
+
+    .btn-secondary {
+      @apply px-4 py-2 bg-white border-[3px] border-gray-900 text-gray-900 rounded font-medium;
+      @apply hover:bg-gray-50 transition-colors;
+    }
+
+    /* Form card styling */
+    .form-card {
+      @apply rounded-xl relative z-20 p-8 sm:p-10 border-[3px] border-gray-900 bg-white;
+    }
+
+    .form-card-shadow {
+      @apply w-full h-full absolute inset-0 bg-[#B31B1B] rounded-xl translate-y-2 translate-x-2;
+    }
+
+    /* Input styling */
+    .input-field {
+      @apply border-[3px] w-full relative z-20 border-gray-900 placeholder-gray-500 text-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#B31B1B] py-3.5 px-6 rounded bg-gray-50;
+    }
+
+    .input-shadow {
+      @apply w-full h-full rounded bg-gray-900 translate-y-1 translate-x-1 absolute inset-0 z-10;
+    }
+
+    /* Result section styling */
+    .result-card {
+      @apply bg-white rounded-xl border-[3px] border-gray-900 p-6 relative z-20 space-y-6;
+    }
+
+    .result-textarea {
+      @apply w-full p-4 bg-gray-50 border-[3px] border-gray-900 rounded font-mono text-sm resize-none focus:outline-none relative z-10;
+    }
+
+    /* Checkbox styling for arXiv theme */
+    .checkbox-arxiv {
+      @apply cursor-pointer peer appearance-none w-full h-full rounded-sm border-[3px] border-current bg-white m-0 text-current shadow-[3px_3px_0_currentColor];
+    }
+
+    .checkbox-arxiv-check {
+      @apply absolute inset-0 w-3 h-3 m-auto scale-0 transition-transform duration-150 ease-in-out shadow-[inset_1rem_1rem_#B31B1B] bg-[CanvasText] origin-bottom-left peer-checked:scale-100;
+      clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+    }
+  }
+
+  @layer utilities {
+    .no-drag {
+      @apply pointer-events-none select-none;
+      -webkit-user-drag: none;
+    }
+    .link-bounce {
+      @apply transition-transform hover:-translate-y-0.5;
+    }
+  }
+</style>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        {# Favicons #}
+        <link rel="icon" type="image/x-icon" href="/static/favicons/favicon.ico">
+        <link rel="icon" type="image/svg+xml" href="/static/favicons/favicon.svg">
+        <link rel="icon"
+              type="image/png"
+              href="/static/favicons/favicon-64.png"
+              sizes="64x64">
+        <link rel="apple-touch-icon"
+              type="image/png"
+              href="/static/favicons/apple-touch-icon.png"
+              sizes="180x180">
+        {# Search Engine Meta Tags #}
+        <meta name="title"       content="arxiv2md">
+        <meta name="description"
+              content="Convert arXiv papers to clean Markdown for LLM context windows.">
+        <meta name="keywords"
+              content="arxiv2md, arXiv, Markdown, LLM, AI tools, paper parsing, academic papers, research, context window">
+        <meta name="robots"      content="index, follow">
+        {# Open Graph Meta Tags #}
+        <meta property="og:title"       content="arxiv2md">
+        <meta property="og:description"
+              content="Convert arXiv papers to clean Markdown for LLM context windows.">
+        <meta property="og:type"        content="website">
+        <meta property="og:url"         content="{{ request.url }}">
+        <meta property="og:image"       content="/static/og-image.png">
+        {# Web App Meta #}
+        <meta name="apple-mobile-web-app-title"            content="arxiv2md">
+        <meta name="application-name"                      content="arxiv2md">
+        <meta name="theme-color"                           content="#B31B1B">
+        <meta name="mobile-web-app-capable"                content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="default">
+        {# Twitter card #}
+        <meta name="twitter:card"        content="summary_large_image">
+        <meta name="twitter:title"       content="arxiv2md">
+        <meta name="twitter:description"
+              content="Convert arXiv papers to clean Markdown for LLM context windows.">
+        <meta name="twitter:image"       content="/static/og-image.png">
+        {# Title #}
+        <title>
+            {% block title %}
+                {% if title %}
+                    arxiv2md - {{ title }}
+                {% else %}
+                    arxiv2md
+                {% endif %}
+            {% endblock %}
+        </title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        {% include 'components/tailwind_arxiv.html' %}
+    </head>
+    <body class="bg-[#F9F9F9] min-h-screen flex flex-col">
+        {% include 'components/navbar_arxiv.jinja' %}
+        {# Main content wrapper #}
+        <main class="flex-1 w-full">
+            <div class="max-w-4xl mx-auto px-4 py-8">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+        {# Footer #}
+        {% include 'components/footer_arxiv.jinja' %}
+        {# Scripts #}
+        <script defer src="/static/js/index.js"></script>
+        <script defer src="/static/js/utils.js"></script>
+    </body>
+</html>

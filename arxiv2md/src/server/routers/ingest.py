@@ -42,6 +42,7 @@ async def api_ingest(
         token=ingest_request.token,
         remove_refs=ingest_request.remove_refs,
         remove_toc=ingest_request.remove_toc,
+        remove_inline_citations=ingest_request.remove_inline_citations,
         section_filter_mode=ingest_request.section_filter_mode.value,
         sections=ingest_request.sections,
     )

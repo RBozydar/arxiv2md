@@ -55,6 +55,10 @@ class IngestRequest(BaseModel):
     input_text: str = Field(..., description="arXiv URL or ID to ingest")
     remove_refs: bool = Field(default=False, description="Remove references from output")
     remove_toc: bool = Field(default=False, description="Remove table of contents from output")
+    remove_inline_citations: bool = Field(
+        default=False,
+        description="Remove inline citation text (e.g., '(Smith et al., 2023)') from output",
+    )
     section_filter_mode: SectionFilterMode = Field(
         default=SectionFilterMode.EXCLUDE,
         description="Section filtering mode",

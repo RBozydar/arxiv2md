@@ -19,10 +19,18 @@ async def ingest_paper(
     html_url: str,
     remove_refs: bool,
     remove_toc: bool,
+    remove_inline_citations: bool = False,
     section_filter_mode: str,
     sections: list[str],
 ) -> tuple[IngestionResult, dict[str, str | list[str] | None]]:
-    """Fetch, parse, and serialize an arXiv paper into Markdown."""
+    """Fetch, parse, and serialize an arXiv paper into Markdown.
+
+    Parameters
+    ----------
+    remove_inline_citations : bool
+        If True, completely remove inline citation links from the output.
+        If False (default), citation URLs are stripped but text is kept.
+    """
     html = await fetch_arxiv_html(html_url, arxiv_id=arxiv_id, version=version, use_cache=True)
     parsed = parse_arxiv_html(html)
 
@@ -31,7 +39,7 @@ async def ingest_paper(
         filtered_sections = filter_sections(filtered_sections, mode="exclude", selected=_REFERENCE_TITLES)
 
     for section in filtered_sections:
-        _populate_section_markdown(section)
+        _populate_section_markdown(section, remove_inline_citations=remove_inline_citations)
 
     result = format_paper(
         arxiv_id=arxiv_id,
@@ -52,8 +60,8 @@ async def ingest_paper(
     return result, metadata
 
 
-def _populate_section_markdown(section) -> None:
+def _populate_section_markdown(section, *, remove_inline_citations: bool = False) -> None:
     if section.html:
-        section.markdown = convert_fragment_to_markdown(section.html)
+        section.markdown = convert_fragment_to_markdown(section.html, remove_inline_citations=remove_inline_citations)
     for child in section.children:
-        _populate_section_markdown(child)
+        _populate_section_markdown(child, remove_inline_citations=remove_inline_citations)

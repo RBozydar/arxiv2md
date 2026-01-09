@@ -21,5 +21,6 @@ class ArxivQuery(BaseModel):
     cache_dir: Path
     remove_refs: bool = False
     remove_toc: bool = False
+    remove_inline_citations: bool = False
     section_filter_mode: Literal["include", "exclude"] = "exclude"
     sections: list[str] = Field(default_factory=list)

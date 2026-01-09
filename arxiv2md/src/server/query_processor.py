@@ -61,6 +61,7 @@ async def process_query(
     *,
     remove_refs: bool = False,
     remove_toc: bool = False,
+    remove_inline_citations: bool = False,
     section_filter_mode: str = "exclude",
     sections: list[str] | None = None,
     max_file_size: int | None = None,
@@ -82,6 +83,7 @@ async def process_query(
         update={
             "remove_refs": remove_refs,
             "remove_toc": remove_toc,
+            "remove_inline_citations": remove_inline_citations,
             "section_filter_mode": section_filter_mode,
             "sections": sections or [],
         }
@@ -94,6 +96,7 @@ async def process_query(
             html_url=query.html_url,
             remove_refs=query.remove_refs,
             remove_toc=query.remove_toc,
+            remove_inline_citations=query.remove_inline_citations,
             section_filter_mode=query.section_filter_mode,
             sections=query.sections,
         )

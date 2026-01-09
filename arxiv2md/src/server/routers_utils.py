@@ -25,8 +25,9 @@ async def _perform_ingestion(
     token: str | None,
     remove_refs: bool,
     remove_toc: bool,
-    section_filter_mode: str,
-    sections: list[str],
+    remove_inline_citations: bool = False,
+    section_filter_mode: str = "exclude",
+    sections: list[str] | None = None,
 ) -> JSONResponse:
     """Run ``process_query`` and wrap the result in a ``FastAPI`` ``JSONResponse``.
 
@@ -46,8 +47,9 @@ async def _perform_ingestion(
             token=token,
             remove_refs=remove_refs,
             remove_toc=remove_toc,
+            remove_inline_citations=remove_inline_citations,
             section_filter_mode=section_filter_mode,
-            sections=sections,
+            sections=sections or [],
         )
 
         if isinstance(result, IngestErrorResponse):

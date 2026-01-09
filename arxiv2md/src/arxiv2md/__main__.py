@@ -35,11 +35,17 @@ async def _async_main(args: argparse.Namespace) -> None:
         html_url=query.html_url,
         remove_refs=args.remove_refs,
         remove_toc=args.remove_toc,
+        remove_inline_citations=args.remove_inline_citations,
         section_filter_mode=args.section_filter_mode,
         sections=sections,
     )
 
-    output_text = _format_output(result.summary, result.sections_tree, result.content)
+    output_text = _format_output(
+        result.summary,
+        result.sections_tree,
+        result.content,
+        include_tree=args.include_tree,
+    )
     output_target = args.output if args.output is not None else DEFAULT_OUTPUT_FILE
 
     if output_target == "-":
@@ -54,8 +60,10 @@ async def _async_main(args: argparse.Namespace) -> None:
         print(result.summary)
 
 
-def _format_output(summary: str, tree: str, content: str) -> str:
-    return f"{summary}\n\n{tree}\n\n{content}".strip()
+def _format_output(summary: str, tree: str, content: str, *, include_tree: bool) -> str:
+    if include_tree:
+        return f"{summary}\n\n{tree}\n\n{content}".strip()
+    return f"{summary}\n\n{content}".strip()
 
 
 def _collect_sections(sections_csv: str | None, section_list: list[str] | None) -> list[str]:
@@ -87,6 +95,11 @@ def _parse_args() -> argparse.Namespace:
         help="Remove table of contents from output.",
     )
     parser.add_argument(
+        "--remove-inline-citations",
+        action="store_true",
+        help="Remove inline citation text (e.g., '(Smith et al., 2023)') from output.",
+    )
+    parser.add_argument(
         "--section-filter-mode",
         choices=("include", "exclude"),
         default="exclude",
@@ -107,6 +120,11 @@ def _parse_args() -> argparse.Namespace:
         "-o",
         default=None,
         help="Output file path. Use '-' to write to stdout.",
+    )
+    parser.add_argument(
+        "--include-tree",
+        action="store_true",
+        help="Include the section tree before the Markdown content.",
     )
     return parser.parse_args()
 
