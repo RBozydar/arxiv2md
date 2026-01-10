@@ -48,6 +48,16 @@
         </title>
         <script src="https://cdn.tailwindcss.com"></script>
         {% include 'components/tailwind_arxiv.html' %}
+        {# Google Analytics #}
+        <!-- Google tag (gtag.js) -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-S1GJREQYBK"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'G-S1GJREQYBK');
+        </script>
     </head>
     <body class="bg-[#F9F9F9] min-h-screen flex flex-col">
         {% include 'components/navbar_arxiv.jinja' %}
