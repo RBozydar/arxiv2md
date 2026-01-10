@@ -23,12 +23,13 @@ jobs:
           key: ${{ secrets.DO_SSH_KEY }}
           script: |
             cd /root/arxiv2md
-            git pull origin main
+            git fetch origin
+            git reset --hard origin/main
             docker-compose down
             docker-compose build --no-cache
             docker-compose up -d --force-recreate
             sleep 5
-            curl -f http://localhost:8001/health || echo "Health check failed"
+            curl -f http://localhost:8001/health || exit 1
             docker-compose logs --tail=50
 
       - name: Notify deployment status
