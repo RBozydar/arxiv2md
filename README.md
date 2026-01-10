@@ -1,7 +1,7 @@
 ﻿# arxiv2md
 
 <div align="center">
-  <img src="assets/image.png" alt="arxiv2md">
+  <img src="assets/image.png" alt="arxiv2md" width="400">
 </div>
 
 Convert arXiv papers to clean Markdown. Particularly useful for prompting LLMs. This repo contains:
