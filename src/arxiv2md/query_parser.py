@@ -54,10 +54,24 @@ def _strip_arxiv_prefix(value: str) -> str:
 
 
 def _looks_like_url(value: str) -> bool:
-    return value.startswith(("http://", "https://", "arxiv.org/"))
+    # Check for full URLs
+    if value.startswith(("http://", "https://", "arxiv.org/")):
+        return True
+    # Check for path-style inputs like "html/2501.11120v1" or "abs/2501.11120v1"
+    if "/" in value:
+        first_part = value.split("/")[0]
+        if first_part in _ARXIV_PATH_KINDS:
+            return True
+    return False
 
 
 def _extract_from_url(url: str) -> tuple[str, str | None]:
+    # Handle path-style inputs like "html/2501.11120v1" or "abs/2501.11120v1"
+    if not url.startswith(("http://", "https://", "arxiv.org/")):
+        first_part = url.split("/")[0]
+        if first_part in _ARXIV_PATH_KINDS:
+            url = f"https://arxiv.org/{url}"
+
     if url.startswith("arxiv.org/"):
         url = f"https://{url}"
 
