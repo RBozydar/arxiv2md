@@ -1,5 +1,7 @@
 ﻿# arxiv2md
 
+![alt text](assets/image.png)
+
 Convert arXiv papers to clean Markdown. Particularly useful for prompting LLMs. This repo contains:
 - A FastAPI web app (local-first) that mirrors the gitingest UX.
 - A CLI for one-off conversions.
