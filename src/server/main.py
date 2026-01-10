@@ -5,14 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 # Import logging configuration first to intercept all logging
 from arxiv2md.utils.logging_config import get_logger
 from server.routers import dynamic, index, ingest
-from server.server_config import get_version_info, templates
 
 # Load environment variables from .env file
 load_dotenv()
@@ -88,28 +87,6 @@ async def llm_txt() -> FileResponse:
 
     """
     return FileResponse("static/llms.txt")
-
-
-@app.get("/docs", response_class=HTMLResponse, include_in_schema=False)
-async def custom_swagger_ui(request: Request) -> HTMLResponse:
-    """Serve custom Swagger UI documentation.
-
-    **This endpoint serves a custom Swagger UI interface**
-    for the API documentation, providing an interactive way to explore
-    and test the available endpoints.
-
-    **Parameters**
-
-    - **request** (`Request`): The incoming HTTP request
-
-    **Returns**
-
-    - **HTMLResponse**: Custom Swagger UI documentation page
-
-    """
-    context = {"request": request}
-    context.update(get_version_info())
-    return templates.TemplateResponse("swagger_ui.jinja", context)
 
 
 @app.get("/api", include_in_schema=True)
