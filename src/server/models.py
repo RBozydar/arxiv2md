@@ -57,7 +57,7 @@ class IngestRequest(BaseModel):
     remove_toc: bool = Field(default=False, description="Remove table of contents from output")
     remove_inline_citations: bool = Field(
         default=False,
-        description="Remove inline citation text (e.g., '(Smith et al., 2023)') from output",
+        description="Remove inline citations and internal paper links (section references) from output",
     )
     section_filter_mode: SectionFilterMode = Field(
         default=SectionFilterMode.EXCLUDE,

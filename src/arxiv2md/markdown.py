@@ -198,6 +198,13 @@ def _is_citation_link(href: str | None) -> bool:
     return "#bib." in href or href.startswith("#bib")
 
 
+def _is_internal_paper_link(href: str | None) -> bool:
+    """Check if a link is an internal paper section reference (e.g., arxiv.org/html/...#S2.SS1)."""
+    if not href:
+        return False
+    return "arxiv.org/html/" in href and "#" in href and "#bib" not in href
+
+
 def _serialize_inline(node: Tag | NavigableString, *, remove_inline_citations: bool = False) -> str:
     if isinstance(node, NavigableString):
         return str(node)
@@ -218,6 +225,9 @@ def _serialize_inline(node: Tag | NavigableString, *, remove_inline_citations: b
         if _is_citation_link(href):
             if remove_inline_citations:
                 return ""  # Completely remove citation
+            return text  # Keep text only, strip URL
+        # Handle internal paper links (section references)
+        if remove_inline_citations and _is_internal_paper_link(href):
             return text  # Keep text only, strip URL
         # Regular links: keep full markdown link
         if href:
