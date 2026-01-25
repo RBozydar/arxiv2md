@@ -17,6 +17,7 @@ class ArxivQuery(BaseModel):
     version: str | None = None
     html_url: str
     ar5iv_url: str
+    latex_url: str
     abs_url: str
     id: UUID
     cache_dir: Path

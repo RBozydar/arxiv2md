@@ -16,12 +16,16 @@ from arxiv2md.query_parser import parse_arxiv_input
         ("cs/9901001v2", "cs/9901001v2", "v2"),
     ],
 )
-def test_parse_arxiv_inputs(input_text: str, arxiv_id: str, version: str | None) -> None:
+def test_parse_arxiv_inputs(
+    input_text: str, arxiv_id: str, version: str | None
+) -> None:
     query = parse_arxiv_input(input_text)
 
     assert query.arxiv_id == arxiv_id
     assert query.version == version
     assert query.html_url == f"https://arxiv.org/html/{arxiv_id}"
+    assert query.ar5iv_url == f"https://ar5iv.labs.arxiv.org/html/{arxiv_id}"
+    assert query.latex_url == f"https://arxiv.org/e-print/{arxiv_id}"
     assert query.abs_url == f"https://arxiv.org/abs/{arxiv_id}"
 
 

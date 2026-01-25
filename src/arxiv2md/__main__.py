@@ -34,11 +34,14 @@ async def _async_main(args: argparse.Namespace) -> None:
         version=query.version,
         html_url=query.html_url,
         ar5iv_url=query.ar5iv_url,
+        latex_url=query.latex_url,
         remove_refs=args.remove_refs,
         remove_toc=args.remove_toc,
         remove_inline_citations=args.remove_inline_citations,
         section_filter_mode=args.section_filter_mode,
         sections=sections,
+        force_latex=args.latex,
+        disable_latex_fallback=args.no_latex_fallback,
     )
 
     output_text = _format_output(
@@ -71,7 +74,9 @@ def _format_output(summary: str, tree: str, content: str, *, include_tree: bool)
     return f"{summary}\n\n{content}".strip()
 
 
-def _collect_sections(sections_csv: str | None, section_list: list[str] | None) -> list[str]:
+def _collect_sections(
+    sections_csv: str | None, section_list: list[str] | None
+) -> list[str]:
     values: list[str] = []
     if sections_csv:
         values.extend(sections_csv.split(","))
@@ -130,6 +135,16 @@ def _parse_args() -> argparse.Namespace:
         "--include-tree",
         action="store_true",
         help="Include the section tree before the Markdown content.",
+    )
+    parser.add_argument(
+        "--latex",
+        action="store_true",
+        help="Force LaTeX source processing (skip HTML even if available).",
+    )
+    parser.add_argument(
+        "--no-latex-fallback",
+        action="store_true",
+        help="Disable LaTeX fallback (fail if HTML unavailable).",
     )
     return parser.parse_args()
 

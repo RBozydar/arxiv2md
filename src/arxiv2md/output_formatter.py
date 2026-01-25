@@ -12,6 +12,13 @@ except ImportError:  # pragma: no cover - optional dependency
 from arxiv2md.schemas import IngestionResult, SectionNode
 
 
+_SOURCE_LABELS: dict[str, str] = {
+    "html": "arXiv HTML",
+    "ar5iv": "ar5iv HTML",
+    "latex": "LaTeX (via Pandoc)",
+}
+
+
 def format_paper(
     *,
     arxiv_id: str,
@@ -22,6 +29,7 @@ def format_paper(
     sections: list[SectionNode],
     include_toc: bool,
     include_abstract_in_tree: bool = True,
+    source: str | None = None,
 ) -> IngestionResult:
     """Create summary, section tree, and content."""
     tree_lines = ["Sections:"]
@@ -29,7 +37,9 @@ def format_paper(
         tree_lines.append("Abstract")
     tree_lines.append(_create_sections_tree(sections))
     tree = "\n".join(tree_lines)
-    content = _render_content(abstract=abstract, sections=sections, include_toc=include_toc)
+    content = _render_content(
+        abstract=abstract, sections=sections, include_toc=include_toc
+    )
 
     summary_lines = []
     if title:
@@ -40,6 +50,9 @@ def format_paper(
     if authors:
         summary_lines.append(f"Authors: {', '.join(authors)}")
     summary_lines.append(f"Sections: {count_sections(sections)}")
+    if source:
+        source_label = _SOURCE_LABELS.get(source, source)
+        summary_lines.append(f"Source: {source_label}")
 
     token_estimate = _format_token_count(tree + "\n" + content)
     if token_estimate:
