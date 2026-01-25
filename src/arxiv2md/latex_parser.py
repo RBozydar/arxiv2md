@@ -54,6 +54,8 @@ def convert_latex_to_markdown(main_tex: Path) -> str:
     Raises:
         RuntimeError: If pypandoc is not available or conversion fails.
     """
+    import os
+
     try:
         import pypandoc
     except ImportError as exc:
@@ -62,12 +64,21 @@ def convert_latex_to_markdown(main_tex: Path) -> str:
             "(pip install pypandoc_binary)."
         ) from exc
 
-    return pypandoc.convert_file(
-        str(main_tex),
-        "markdown",
-        format="latex",
-        extra_args=["--wrap=none"],
-    )
+    # Pandoc resolves \input{} relative to cwd, so we need to change directory
+    original_cwd = os.getcwd()
+    source_dir = main_tex.parent.resolve()
+    tex_filename = main_tex.name
+
+    try:
+        os.chdir(source_dir)
+        return pypandoc.convert_file(
+            tex_filename,
+            "markdown",
+            format="latex",
+            extra_args=["--wrap=none"],
+        )
+    finally:
+        os.chdir(original_cwd)
 
 
 def extract_latex_metadata(tex_content: str) -> dict[str, str | list[str] | None]:

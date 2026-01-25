@@ -164,8 +164,9 @@ class TestConvertLatexToMarkdown:
             importlib.reload(latex_parser)
             latex_parser.convert_latex_to_markdown(tex_file)
 
+            # Now uses filename only since we chdir to the source directory
             mock_pypandoc.convert_file.assert_called_once_with(
-                str(tex_file),
+                tex_file.name,
                 "markdown",
                 format="latex",
                 extra_args=["--wrap=none"],
