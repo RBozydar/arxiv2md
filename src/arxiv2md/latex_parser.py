@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import re
+import subprocess
 from pathlib import Path
+
+from arxiv2md.exceptions import ConversionError, ParseError
 
 
 def detect_main_tex(source_dir: Path) -> Path:
@@ -21,11 +24,11 @@ def detect_main_tex(source_dir: Path) -> Path:
         Path to the main .tex file.
 
     Raises:
-        ValueError: If no .tex files are found in the directory.
+        ParseError: If no .tex files are found in the directory.
     """
     tex_files = sorted(source_dir.glob("*.tex"))
     if not tex_files:
-        raise ValueError(f"No .tex files found in {source_dir}")
+        raise ParseError(f"No .tex files found in {source_dir}")
 
     # Look for file containing \documentclass
     for tex_file in tex_files:
@@ -43,7 +46,10 @@ def detect_main_tex(source_dir: Path) -> Path:
 
 
 def convert_latex_to_markdown(main_tex: Path) -> str:
-    """Convert LaTeX file to Markdown using pandoc.
+    """Convert LaTeX file to Markdown using pandoc (sync version).
+
+    Uses subprocess with explicit cwd parameter instead of os.chdir()
+    to be thread-safe. Pandoc resolves \\input{} paths relative to cwd.
 
     Args:
         main_tex: Path to the main .tex file.
@@ -52,33 +58,23 @@ def convert_latex_to_markdown(main_tex: Path) -> str:
         Markdown string converted from LaTeX source.
 
     Raises:
-        RuntimeError: If pypandoc is not available or conversion fails.
+        ConversionError: If pandoc is not available or conversion fails.
     """
-    import os
-
-    try:
-        import pypandoc
-    except ImportError as exc:
-        raise RuntimeError(
-            "pypandoc_binary is required for LaTeX conversion "
-            "(pip install pypandoc_binary)."
-        ) from exc
-
-    # Pandoc resolves \input{} relative to cwd, so we need to change directory
-    original_cwd = os.getcwd()
     source_dir = main_tex.parent.resolve()
     tex_filename = main_tex.name
 
-    try:
-        os.chdir(source_dir)
-        return pypandoc.convert_file(
-            tex_filename,
-            "markdown",
-            format="latex",
-            extra_args=["--wrap=none"],
-        )
-    finally:
-        os.chdir(original_cwd)
+    result = subprocess.run(
+        ["pandoc", tex_filename, "-f", "latex", "-t", "markdown", "--wrap=none"],
+        cwd=source_dir,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    if result.returncode != 0:
+        raise ConversionError(f"Pandoc conversion failed: {result.stderr}")
+
+    return result.stdout
 
 
 def extract_latex_metadata(tex_content: str) -> dict[str, str | list[str] | None]:

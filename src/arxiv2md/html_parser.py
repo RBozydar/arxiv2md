@@ -6,20 +6,28 @@ import re
 from dataclasses import dataclass
 from typing import Iterable
 
+from arxiv2md.exceptions import ParseError
+from arxiv2md.html_utils import find_document_root
 from arxiv2md.schemas import SectionNode
-
 
 try:
     from bs4 import BeautifulSoup
     from bs4.element import NavigableString, Tag
 except ImportError as exc:  # pragma: no cover - runtime dependency check
-    raise RuntimeError("BeautifulSoup4 is required for HTML parsing (pip install beautifulsoup4).") from exc
+    raise ParseError(
+        "BeautifulSoup4 is required for HTML parsing (pip install beautifulsoup4)."
+    ) from exc
 
 
 _HEADING_RE = re.compile(r"^h[1-6]$")
 _EMAIL_RE = re.compile(r"^[\w.+-]+@[\w.-]+\.\w+$")
 # Keywords that indicate footnotes or contribution statements (case-insensitive check)
-_SKIP_KEYWORDS = {"footnotemark:", "equal contribution", "work performed", "listing order"}
+_SKIP_KEYWORDS = {
+    "footnotemark:",
+    "equal contribution",
+    "work performed",
+    "listing order",
+}
 _MAX_AUTHOR_PART_LENGTH = 80  # Filter out long contribution statements
 
 
@@ -35,27 +43,17 @@ class ParsedArxivHtml:
 
 def parse_arxiv_html(html: str) -> ParsedArxivHtml:
     """Extract title, authors, abstract, and section tree from HTML."""
-    soup = BeautifulSoup(html, "html.parser")
-    document_root = _find_document_root(soup)
+    soup = BeautifulSoup(html, "lxml")
+    document_root = find_document_root(soup)
 
     title = _extract_title(soup)
     authors = _extract_authors(soup)
     abstract = _extract_abstract(soup)
     sections = _extract_sections(document_root)
 
-    return ParsedArxivHtml(title=title, authors=authors, abstract=abstract, sections=sections)
-
-
-def _find_document_root(soup: BeautifulSoup) -> Tag:
-    root = soup.find("article", class_=re.compile(r"ltx_document"))
-    if root:
-        return root
-    article = soup.find("article")
-    if article:
-        return article
-    if soup.body:
-        return soup.body
-    return soup
+    return ParsedArxivHtml(
+        title=title, authors=authors, abstract=abstract, sections=sections
+    )
 
 
 def _extract_title(soup: BeautifulSoup) -> str | None:
@@ -70,7 +68,7 @@ def _extract_title(soup: BeautifulSoup) -> str | None:
 def _extract_authors(soup: BeautifulSoup) -> list[str]:
     authors_container = soup.find("div", class_="ltx_authors")
     if not authors_container:
-        document_root = _find_document_root(soup)
+        document_root = find_document_root(soup)
         authors_container = document_root.find("div", class_="ltx_authors")
     if not authors_container:
         return []
@@ -81,7 +79,9 @@ def _extract_authors(soup: BeautifulSoup) -> list[str]:
         and "ltx_font_bold" in tag.get("class", [])
     )
     if not author_nodes:
-        author_nodes = authors_container.find_all(class_=re.compile(r"ltx_author|ltx_personname"))
+        author_nodes = authors_container.find_all(
+            class_=re.compile(r"ltx_author|ltx_personname")
+        )
 
     authors: list[str] = []
     for node in author_nodes:
@@ -93,7 +93,7 @@ def _extract_authors(soup: BeautifulSoup) -> list[str]:
 
 def _clean_author_text(node: Tag) -> list[str]:
     """Extract clean author names/affiliations, filtering out emails and footnotes."""
-    clone = BeautifulSoup(str(node), "html.parser")
+    clone = BeautifulSoup(str(node), "lxml")
     # Remove superscripts (footnote markers)
     for sup in clone.find_all("sup"):
         sup.decompose()
@@ -140,7 +140,9 @@ def _extract_abstract(soup: BeautifulSoup) -> str | None:
 
 
 def _extract_sections(root: Tag) -> list[SectionNode]:
-    headings = [heading for heading in _iter_headings(root) if not _is_title_heading(heading)]
+    headings = [
+        heading for heading in _iter_headings(root) if not _is_title_heading(heading)
+    ]
     sections: list[SectionNode] = []
     stack: list[SectionNode] = []
 
@@ -195,7 +197,9 @@ def _collect_section_html(heading: Tag) -> str | None:
         if isinstance(child, Tag) and child.name == "section":
             continue
         if isinstance(child, Tag) and any(
-            cls.startswith("ltx_section") or cls.startswith("ltx_subsection") or cls.startswith("ltx_subsubsection")
+            cls.startswith("ltx_section")
+            or cls.startswith("ltx_subsection")
+            or cls.startswith("ltx_subsubsection")
             for cls in child.get("class", [])
         ):
             continue

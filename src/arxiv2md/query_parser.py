@@ -11,6 +11,7 @@ from arxiv2md.config import ARXIV2MD_CACHE_PATH
 from arxiv2md.schemas import ArxivQuery
 
 _ARXIV_HOST: Final = "arxiv.org"
+_ALLOWED_HOSTS: Final = frozenset({"arxiv.org", "www.arxiv.org"})
 _ARXIV_PATH_KINDS: Final = {"abs", "pdf", "html"}
 _ARXIV_ID_RE: Final = re.compile(
     r"^(?P<base>(\d{4}\.\d{4,5}|[a-zA-Z-]+/\d{7}))(v(?P<version>\d+))?$",
@@ -80,7 +81,13 @@ def _extract_from_url(url: str) -> tuple[str, str | None]:
         url = f"https://{url}"
 
     parsed = urlparse(url)
-    if parsed.netloc and _ARXIV_HOST not in parsed.netloc:
+
+    # Security: Reject URLs with credentials to prevent SSRF bypass
+    if parsed.username or parsed.password:
+        raise ValueError("URLs with credentials are not allowed")
+
+    # Security: Use exact host matching to prevent SSRF via substring matching
+    if parsed.netloc and parsed.netloc not in _ALLOWED_HOSTS:
         raise ValueError(f"Unsupported host: {parsed.netloc}")
 
     path_parts = [part for part in parsed.path.split("/") if part]

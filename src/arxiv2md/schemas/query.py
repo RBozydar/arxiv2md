@@ -3,14 +3,28 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class ArxivQuery(BaseModel):
-    """Parsed arXiv query details."""
+    """Parsed arXiv query details.
+
+    Contains the parsed arXiv identifier and associated URLs. Processing options
+    are handled separately by IngestionOptions.
+
+    Attributes:
+        input_text: The original input text provided by the user.
+        arxiv_id: The extracted arXiv paper identifier.
+        version: Optional version string (e.g., "v1").
+        html_url: Primary HTML URL (arxiv.org).
+        ar5iv_url: Fallback ar5iv HTML URL.
+        latex_url: LaTeX source URL.
+        abs_url: Abstract page URL.
+        id: Unique identifier for this query (used for caching).
+        cache_dir: Directory path for caching this query's results.
+    """
 
     input_text: str
     arxiv_id: str
@@ -21,8 +35,3 @@ class ArxivQuery(BaseModel):
     abs_url: str
     id: UUID
     cache_dir: Path
-    remove_refs: bool = False
-    remove_toc: bool = False
-    remove_inline_citations: bool = False
-    section_filter_mode: Literal["include", "exclude"] = "exclude"
-    sections: list[str] = Field(default_factory=list)

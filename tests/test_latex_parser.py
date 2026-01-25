@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from arxiv2md.exceptions import ParseError
 from arxiv2md.latex_parser import (
     convert_latex_to_markdown,
     detect_main_tex,
@@ -60,16 +61,16 @@ class TestDetectMainTex:
         assert result == tmp_path / "chapter1.tex"
 
     def test_raises_on_empty_directory(self, tmp_path: Path) -> None:
-        """Raises ValueError when no .tex files exist."""
-        with pytest.raises(ValueError, match="No .tex files found"):
+        """Raises ParseError when no .tex files exist."""
+        with pytest.raises(ParseError, match="No .tex files found"):
             detect_main_tex(tmp_path)
 
     def test_raises_when_only_non_tex_files(self, tmp_path: Path) -> None:
-        """Raises ValueError when directory has files but no .tex files."""
+        """Raises ParseError when directory has files but no .tex files."""
         (tmp_path / "readme.md").write_text("# README")
         (tmp_path / "figure.png").write_bytes(b"fake image")
 
-        with pytest.raises(ValueError, match="No .tex files found"):
+        with pytest.raises(ParseError, match="No .tex files found"):
             detect_main_tex(tmp_path)
 
     def test_handles_encoding_errors(self, tmp_path: Path) -> None:
@@ -122,54 +123,53 @@ class TestConvertLatexToMarkdown:
 
         assert "E = mc^2" in result or "E=mc^2" in result
 
-    def test_raises_when_pypandoc_missing(self, tmp_path: Path) -> None:
-        """Raises RuntimeError when pypandoc is not installed."""
+    def test_raises_when_pandoc_fails(self, tmp_path: Path) -> None:
+        """Raises ConversionError when pandoc conversion fails."""
+        from arxiv2md.exceptions import ConversionError
+
         tex_file = tmp_path / "test.tex"
         tex_file.write_text(r"\documentclass{article}")
 
-        # Mock pypandoc import to raise ImportError
-        import sys
-        import builtins
+        # Mock subprocess.run to simulate pandoc failure
+        mock_result = MagicMock()
+        mock_result.returncode = 1
+        mock_result.stderr = "pandoc: error"
 
-        original_import = builtins.__import__
-
-        def mock_import(name: str, *args, **kwargs):  # type: ignore[no-untyped-def]
-            if name == "pypandoc":
-                raise ImportError("No module named 'pypandoc'")
-            return original_import(name, *args, **kwargs)
-
-        # Remove pypandoc from cache and patch import
-        sys.modules.pop("pypandoc", None)
-        with patch.object(builtins, "__import__", side_effect=mock_import):
-            with pytest.raises(RuntimeError, match="pypandoc_binary is required"):
+        with patch("arxiv2md.latex_parser.subprocess.run", return_value=mock_result):
+            with pytest.raises(ConversionError, match="Pandoc conversion failed"):
                 convert_latex_to_markdown(tex_file)
 
-    def test_uses_wrap_none_argument(self, tmp_path: Path) -> None:
-        """Verifies --wrap=none is passed to pandoc."""
+    def test_uses_subprocess_with_cwd(self, tmp_path: Path) -> None:
+        """Verifies subprocess is called with cwd parameter (thread-safe)."""
         tex_file = tmp_path / "test.tex"
         tex_file.write_text(
             r"\documentclass{article}\begin{document}Test\end{document}"
         )
 
-        mock_pypandoc = MagicMock()
-        mock_pypandoc.convert_file.return_value = "Test"
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "Test"
 
-        with patch.dict("sys.modules", {"pypandoc": mock_pypandoc}):
-            # Re-import to use the mocked module
-            from arxiv2md import latex_parser
+        with patch(
+            "arxiv2md.latex_parser.subprocess.run", return_value=mock_result
+        ) as mock_run:
+            convert_latex_to_markdown(tex_file)
 
-            # Call through module to use patched import
-            import importlib
-
-            importlib.reload(latex_parser)
-            latex_parser.convert_latex_to_markdown(tex_file)
-
-            # Now uses filename only since we chdir to the source directory
-            mock_pypandoc.convert_file.assert_called_once_with(
-                tex_file.name,
-                "markdown",
-                format="latex",
-                extra_args=["--wrap=none"],
+            # Verify subprocess.run was called with correct arguments
+            mock_run.assert_called_once_with(
+                [
+                    "pandoc",
+                    tex_file.name,
+                    "-f",
+                    "latex",
+                    "-t",
+                    "markdown",
+                    "--wrap=none",
+                ],
+                cwd=tmp_path.resolve(),
+                capture_output=True,
+                text=True,
+                check=False,
             )
 
 

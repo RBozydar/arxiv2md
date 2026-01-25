@@ -7,7 +7,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from arxiv2md.ingestion import ingest_paper
+from arxiv2md.exceptions import (
+    FetchError,
+    HTMLNotAvailableError,
+    SourceNotAvailableError,
+)
+from arxiv2md.ingestion import IngestionOptions, ingest_paper
 
 
 class TestIngestionFallback:
@@ -21,12 +26,7 @@ class TestIngestionFallback:
             "version": "v1",
             "html_url": "https://arxiv.org/html/2401.12345v1",
             "ar5iv_url": "https://ar5iv.labs.arxiv.org/html/2401.12345v1",
-            "latex_url": "https://arxiv.org/e-print/2401.12345v1",
-            "remove_refs": False,
-            "remove_toc": False,
-            "remove_inline_citations": False,
-            "section_filter_mode": "exclude",
-            "sections": [],
+            "options": IngestionOptions(),
         }
 
     @pytest.fixture
@@ -76,9 +76,7 @@ class TestIngestionFallback:
         self, base_params: dict, tmp_path: Path
     ) -> None:
         """When HTML fetch fails with 404, falls back to LaTeX."""
-        html_error = RuntimeError(
-            "This paper does not have an HTML version available on arXiv."
-        )
+        html_error = HTMLNotAvailableError("2401.12345")
 
         # Set up mock LaTeX source directory
         source_dir = tmp_path / "source"
@@ -125,10 +123,8 @@ Introduction from LaTeX.
         self, base_params: dict, tmp_path: Path
     ) -> None:
         """When both HTML and LaTeX fail, raises appropriate error."""
-        html_error = RuntimeError(
-            "This paper does not have an HTML version available on arXiv."
-        )
-        latex_error = RuntimeError("Source bundle not found")
+        html_error = HTMLNotAvailableError("2401.12345")
+        latex_error = SourceNotAvailableError("Source bundle not found")
 
         with patch("arxiv2md.ingestion.fetch_arxiv_html") as mock_html_fetch:
             mock_html_fetch.side_effect = html_error
@@ -136,7 +132,9 @@ Introduction from LaTeX.
             with patch("arxiv2md.ingestion.fetch_arxiv_source") as mock_latex_fetch:
                 mock_latex_fetch.side_effect = latex_error
 
-                with pytest.raises(RuntimeError, match="Source bundle not found"):
+                with pytest.raises(
+                    SourceNotAvailableError, match="Source bundle not found"
+                ):
                     await ingest_paper(**base_params)
 
     @pytest.mark.asyncio
@@ -172,9 +170,9 @@ Main content.
                 ) as mock_convert:
                     mock_convert.return_value = "# Content\n\nMain content."
 
-                    result, metadata = await ingest_paper(
-                        **base_params, force_latex=True
-                    )
+                    params = base_params.copy()
+                    params["options"] = IngestionOptions(force_latex=True)
+                    result, metadata = await ingest_paper(**params)
 
                     # HTML fetch should not be called at all
                     mock_html_fetch.assert_not_called()
@@ -187,16 +185,16 @@ Main content.
         self, base_params: dict
     ) -> None:
         """When disable_latex_fallback=True, raises error instead of falling back."""
-        html_error = RuntimeError(
-            "This paper does not have an HTML version available on arXiv."
-        )
+        html_error = HTMLNotAvailableError("2401.12345")
 
         with patch("arxiv2md.ingestion.fetch_arxiv_html") as mock_html_fetch:
             mock_html_fetch.side_effect = html_error
 
             with patch("arxiv2md.ingestion.fetch_arxiv_source") as mock_latex_fetch:
-                with pytest.raises(RuntimeError, match="does not have an HTML version"):
-                    await ingest_paper(**base_params, disable_latex_fallback=True)
+                with pytest.raises(HTMLNotAvailableError):
+                    params = base_params.copy()
+                    params["options"] = IngestionOptions(disable_latex_fallback=True)
+                    await ingest_paper(**params)
 
                 # LaTeX fetch should NOT be called
                 mock_latex_fetch.assert_not_called()
@@ -206,13 +204,13 @@ Main content.
         self, base_params: dict
     ) -> None:
         """Non-404 HTML errors are raised without triggering fallback."""
-        network_error = RuntimeError("Connection timeout to arXiv server")
+        network_error = FetchError("Connection timeout to arXiv server")
 
         with patch("arxiv2md.ingestion.fetch_arxiv_html") as mock_html_fetch:
             mock_html_fetch.side_effect = network_error
 
             with patch("arxiv2md.ingestion.fetch_arxiv_source") as mock_latex_fetch:
-                with pytest.raises(RuntimeError, match="Connection timeout"):
+                with pytest.raises(FetchError, match="Connection timeout"):
                     await ingest_paper(**base_params)
 
                 # Should not trigger LaTeX fallback for non-404 errors
@@ -223,9 +221,7 @@ Main content.
         self, base_params: dict, tmp_path: Path
     ) -> None:
         """LaTeX fallback includes source provenance in output."""
-        html_error = RuntimeError(
-            "This paper does not have an HTML version available on arXiv."
-        )
+        html_error = HTMLNotAvailableError("2401.12345")
 
         source_dir = tmp_path / "source"
         source_dir.mkdir()
@@ -262,9 +258,7 @@ Content.
         self, base_params: dict, tmp_path: Path
     ) -> None:
         """Version is passed correctly to LaTeX fetch."""
-        html_error = RuntimeError(
-            "This paper does not have an HTML version available on arXiv."
-        )
+        html_error = HTMLNotAvailableError("2401.12345")
 
         source_dir = tmp_path / "source"
         source_dir.mkdir()
@@ -294,9 +288,7 @@ Content.
         self, base_params: dict, tmp_path: Path
     ) -> None:
         """LaTeX fallback handles missing title/author/abstract gracefully."""
-        html_error = RuntimeError(
-            "This paper does not have an HTML version available on arXiv."
-        )
+        html_error = HTMLNotAvailableError("2401.12345")
 
         source_dir = tmp_path / "source"
         source_dir.mkdir()
@@ -336,9 +328,7 @@ Some results here.
         self, base_params: dict, tmp_path: Path
     ) -> None:
         """LaTeX fallback respects remove_toc setting."""
-        html_error = RuntimeError(
-            "This paper does not have an HTML version available on arXiv."
-        )
+        html_error = HTMLNotAvailableError("2401.12345")
 
         source_dir = tmp_path / "source"
         source_dir.mkdir()
@@ -353,8 +343,6 @@ Content.
 """
         )
 
-        base_params["remove_toc"] = True
-
         with patch("arxiv2md.ingestion.fetch_arxiv_html") as mock_html_fetch:
             mock_html_fetch.side_effect = html_error
 
@@ -366,7 +354,9 @@ Content.
                 ) as mock_convert:
                     mock_convert.return_value = "Content."
 
-                    result, metadata = await ingest_paper(**base_params)
+                    params = base_params.copy()
+                    params["options"] = IngestionOptions(remove_toc=True)
+                    result, metadata = await ingest_paper(**params)
 
         # Should not include TOC placeholder when remove_toc=True
         assert "## Contents" not in result.content
@@ -376,9 +366,7 @@ Content.
         self, base_params: dict, tmp_path: Path
     ) -> None:
         """LaTeX fallback includes abstract in content output."""
-        html_error = RuntimeError(
-            "This paper does not have an HTML version available on arXiv."
-        )
+        html_error = HTMLNotAvailableError("2401.12345")
 
         source_dir = tmp_path / "source"
         source_dir.mkdir()
@@ -415,18 +403,18 @@ Body content.
         assert "important content" in result.content
 
     @pytest.mark.asyncio
-    async def test_latex_value_error_propagates(
+    async def test_latex_parse_error_propagates(
         self, base_params: dict, tmp_path: Path
     ) -> None:
-        """ValueError from detect_main_tex propagates correctly."""
-        html_error = RuntimeError(
-            "This paper does not have an HTML version available on arXiv."
-        )
+        """ParseError from detect_main_tex propagates correctly."""
+        from arxiv2md.exceptions import ParseError
+
+        html_error = HTMLNotAvailableError("2401.12345")
 
         # Create empty source directory
         source_dir = tmp_path / "source"
         source_dir.mkdir()
-        # No .tex files - will cause ValueError
+        # No .tex files - will cause ParseError
 
         with patch("arxiv2md.ingestion.fetch_arxiv_html") as mock_html_fetch:
             mock_html_fetch.side_effect = html_error
@@ -434,5 +422,5 @@ Body content.
             with patch("arxiv2md.ingestion.fetch_arxiv_source") as mock_latex_fetch:
                 mock_latex_fetch.return_value = source_dir
 
-                with pytest.raises(ValueError, match="No .tex files found"):
+                with pytest.raises(ParseError, match="No .tex files found"):
                     await ingest_paper(**base_params)

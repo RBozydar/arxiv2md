@@ -9,20 +9,21 @@ import tarfile
 from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
+from typing import Final
 
-import httpx
-
-from arxiv2md.config import (
-    ARXIV2MD_CACHE_PATH,
-    ARXIV2MD_CACHE_TTL_SECONDS,
-    ARXIV2MD_FETCH_BACKOFF_S,
-    ARXIV2MD_FETCH_MAX_RETRIES,
-    ARXIV2MD_FETCH_TIMEOUT_S,
-    ARXIV2MD_USER_AGENT,
+from arxiv2md.cache_utils import (
+    cache_dir_for,
+    is_cache_fresh,
+    mkdir_async,
+    write_text_async,
 )
+from arxiv2md.config import ARXIV2MD_CACHE_PATH, ARXIV2MD_CACHE_TTL_SECONDS
+from arxiv2md.exceptions import ExtractionError, SourceNotAvailableError
+from arxiv2md.http_utils import fetch_with_retries
 
-_RETRY_STATUS = {429, 500, 502, 503, 504}
-_ARXIV_EPRINT_URL = "https://arxiv.org/e-print"
+_ARXIV_EPRINT_URL: Final[str] = "https://arxiv.org/e-print"
+
+_404_MESSAGE = "Source bundle not found. The paper may not have source files available."
 
 
 async def fetch_arxiv_source(
@@ -42,33 +43,36 @@ async def fetch_arxiv_source(
         Path to extracted directory containing source files (.tex, etc.).
 
     Raises:
-        RuntimeError: If source bundle cannot be fetched or extracted.
+        SourceNotAvailableError: If source bundle is not available (404).
+        FetchError: If source bundle cannot be fetched after retries.
+        ExtractionError: If source bundle cannot be extracted.
     """
-    cache_dir = _cache_dir_for(arxiv_id, version)
+    cache_dir = cache_dir_for(arxiv_id, version, ARXIV2MD_CACHE_PATH)
     source_dir = cache_dir / "source"
     marker_path = cache_dir / ".source_extracted"
 
-    if use_cache and _is_cache_fresh(marker_path):
+    if use_cache and is_cache_fresh(marker_path, ARXIV2MD_CACHE_TTL_SECONDS):
         return source_dir
 
     url = f"{_ARXIV_EPRINT_URL}/{arxiv_id}"
-    source_bytes = await _fetch_source_with_retries(url)
+    source_bytes = await _fetch_source(url)
 
-    # Clean up old extraction if exists
+    # Clean up old extraction if exists - offload to thread
     if source_dir.exists():
-        shutil.rmtree(source_dir)
-    source_dir.mkdir(parents=True, exist_ok=True)
+        await asyncio.to_thread(shutil.rmtree, source_dir)
+    await mkdir_async(source_dir, parents=True, exist_ok=True)
 
-    _extract_source_bundle(source_bytes, source_dir)
+    # Extract in thread pool to avoid blocking
+    await asyncio.to_thread(_extract_source_bundle, source_bytes, source_dir)
 
     # Write marker file to track cache freshness
-    marker_path.write_text(datetime.now(timezone.utc).isoformat())
+    await write_text_async(marker_path, datetime.now(timezone.utc).isoformat())
 
     return source_dir
 
 
-async def _fetch_source_with_retries(url: str) -> bytes:
-    """Fetch source bundle bytes with retry logic.
+async def _fetch_source(url: str) -> bytes:
+    """Fetch source bundle bytes from a URL.
 
     Args:
         url: URL to fetch source bundle from.
@@ -77,38 +81,19 @@ async def _fetch_source_with_retries(url: str) -> bytes:
         Raw bytes of the source bundle.
 
     Raises:
-        RuntimeError: If fetch fails after all retries.
+        SourceNotAvailableError: If fetch returns 404.
+        FetchError: If fetch fails after retries.
     """
-    timeout = httpx.Timeout(ARXIV2MD_FETCH_TIMEOUT_S)
-    headers = {"User-Agent": ARXIV2MD_USER_AGENT}
-    last_exc: Exception | None = None
-
-    for attempt in range(ARXIV2MD_FETCH_MAX_RETRIES + 1):
-        try:
-            async with httpx.AsyncClient(
-                timeout=timeout, headers=headers, follow_redirects=True
-            ) as client:
-                response = await client.get(url)
-
-            if response.status_code == 404:
-                raise RuntimeError(
-                    f"Source bundle not found at {url}. "
-                    "The paper may not have source files available."
-                )
-
-            if response.status_code in _RETRY_STATUS:
-                last_exc = RuntimeError(f"HTTP {response.status_code} from arXiv")
-            else:
-                response.raise_for_status()
-                return response.content
-        except (httpx.RequestError, httpx.HTTPStatusError, RuntimeError) as exc:
-            last_exc = exc
-
-        if attempt < ARXIV2MD_FETCH_MAX_RETRIES:
-            backoff = ARXIV2MD_FETCH_BACKOFF_S * (2**attempt)
-            await asyncio.sleep(backoff)
-
-    raise RuntimeError(f"Failed to fetch source bundle from {url}: {last_exc}")
+    result = await fetch_with_retries(
+        url,
+        return_bytes=True,
+        on_404=SourceNotAvailableError,
+        on_404_message=_404_MESSAGE,
+    )
+    # Type narrowing: return_bytes=True means result is bytes
+    if isinstance(result, str):
+        return result.encode("utf-8")
+    return result
 
 
 def _extract_source_bundle(data: bytes, dest_dir: Path) -> None:
@@ -123,18 +108,23 @@ def _extract_source_bundle(data: bytes, dest_dir: Path) -> None:
         dest_dir: Directory to extract files into.
 
     Raises:
-        RuntimeError: If extraction fails or format is unrecognized.
+        ExtractionError: If extraction fails or format is unrecognized.
     """
     # Try tar.gz first (most common)
     try:
         with tarfile.open(fileobj=BytesIO(data), mode="r:gz") as tar:
-            # Security: filter out absolute paths and parent traversal
+            # Security: filter out absolute paths, parent traversal,
+            # symlinks, hardlinks, and device files
             safe_members = [
                 m
                 for m in tar.getmembers()
-                if not m.name.startswith("/") and ".." not in m.name
+                if not m.name.startswith("/")
+                and ".." not in m.name
+                and not m.issym()
+                and not m.islnk()
+                and not m.isdev()
             ]
-            tar.extractall(dest_dir, members=safe_members)
+            tar.extractall(dest_dir, members=safe_members, filter="data")
             return
     except tarfile.TarError:
         pass
@@ -160,45 +150,6 @@ def _extract_source_bundle(data: bytes, dest_dir: Path) -> None:
     except UnicodeDecodeError:
         pass
 
-    raise RuntimeError(
+    raise ExtractionError(
         "Unable to extract source bundle. Expected tar.gz, gzip, or plain LaTeX format."
     )
-
-
-def _is_cache_fresh(marker_path: Path) -> bool:
-    """Check if cached source extraction is still fresh.
-
-    Args:
-        marker_path: Path to the cache marker file.
-
-    Returns:
-        True if cache is fresh and usable, False otherwise.
-    """
-    if not marker_path.exists():
-        return False
-    if ARXIV2MD_CACHE_TTL_SECONDS <= 0:
-        return True
-    mtime = datetime.fromtimestamp(marker_path.stat().st_mtime, tz=timezone.utc)
-    age_seconds = (datetime.now(timezone.utc) - mtime).total_seconds()
-    return age_seconds <= ARXIV2MD_CACHE_TTL_SECONDS
-
-
-def _cache_dir_for(arxiv_id: str, version: str | None) -> Path:
-    """Get cache directory path for a given arXiv paper.
-
-    Uses the same directory structure as fetch.py for consistency,
-    but stores source files in a 'source' subdirectory.
-
-    Args:
-        arxiv_id: The arXiv paper ID.
-        version: Optional version string.
-
-    Returns:
-        Path to the cache directory for this paper.
-    """
-    base = arxiv_id
-    if version and arxiv_id.endswith(version):
-        base = arxiv_id[: -len(version)]
-    version_tag = version or "latest"
-    key = f"{base}__{version_tag}".replace("/", "_")
-    return ARXIV2MD_CACHE_PATH / key

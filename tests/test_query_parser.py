@@ -32,3 +32,27 @@ def test_parse_arxiv_inputs(
 def test_rejects_unknown_host() -> None:
     with pytest.raises(ValueError, match="Unsupported host"):
         parse_arxiv_input("https://example.com/abs/2501.11120")
+
+
+def test_rejects_url_with_credentials_in_username() -> None:
+    """Reject URLs with arxiv.org in the username (SSRF bypass attempt)."""
+    with pytest.raises(ValueError, match="URLs with credentials are not allowed"):
+        parse_arxiv_input("https://arxiv.org@evil.com/abs/2501.11120")
+
+
+def test_rejects_url_with_full_credentials() -> None:
+    """Reject URLs with username:password credentials."""
+    with pytest.raises(ValueError, match="URLs with credentials are not allowed"):
+        parse_arxiv_input("https://user:pass@arxiv.org/abs/2501.11120")
+
+
+def test_rejects_subdomain_of_evil_host() -> None:
+    """Reject URLs where arxiv.org is a subdomain of an attacker host."""
+    with pytest.raises(ValueError, match="Unsupported host"):
+        parse_arxiv_input("https://arxiv.org.evil.com/abs/2501.11120")
+
+
+def test_accepts_www_arxiv_org() -> None:
+    """Accept www.arxiv.org as a valid host."""
+    query = parse_arxiv_input("https://www.arxiv.org/abs/2501.11120")
+    assert query.arxiv_id == "2501.11120"

@@ -21,7 +21,15 @@ from unittest.mock import patch
 
 import pytest
 
-from arxiv2md import ArxivQuery, IngestionResult, ingest_paper, parse_arxiv_input
+from arxiv2md import (
+    ArxivQuery,
+    FetchError,
+    HTMLNotAvailableError,
+    IngestionOptions,
+    IngestionResult,
+    ingest_paper,
+    parse_arxiv_input,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -49,12 +57,6 @@ class TestHTMLPath:
                 version=query.version,
                 html_url=query.html_url,
                 ar5iv_url=query.ar5iv_url,
-                latex_url=query.latex_url,
-                remove_refs=False,
-                remove_toc=False,
-                remove_inline_citations=False,
-                section_filter_mode="exclude",
-                sections=[],
             ),
             timeout=NETWORK_TIMEOUT,
         )
@@ -85,12 +87,6 @@ class TestHTMLPath:
                 version=query.version,
                 html_url=query.html_url,
                 ar5iv_url=query.ar5iv_url,
-                latex_url=query.latex_url,
-                remove_refs=False,
-                remove_toc=False,
-                remove_inline_citations=False,
-                section_filter_mode="exclude",
-                sections=[],
             ),
             timeout=NETWORK_TIMEOUT,
         )
@@ -108,18 +104,14 @@ class TestHTMLPath:
         """Test HTML path with section filtering enabled."""
         query = parse_arxiv_input("2501.11120v1")
 
+        options = IngestionOptions(remove_refs=True, remove_toc=True)
         result, metadata = await asyncio.wait_for(
             ingest_paper(
                 arxiv_id=query.arxiv_id,
                 version=query.version,
                 html_url=query.html_url,
                 ar5iv_url=query.ar5iv_url,
-                latex_url=query.latex_url,
-                remove_refs=True,
-                remove_toc=True,
-                remove_inline_citations=False,
-                section_filter_mode="exclude",
-                sections=[],
+                options=options,
             ),
             timeout=NETWORK_TIMEOUT,
         )
@@ -195,12 +187,6 @@ class TestAr5ivFallback:
                 version=query.version,
                 html_url=query.html_url,
                 ar5iv_url=query.ar5iv_url,
-                latex_url=query.latex_url,
-                remove_refs=False,
-                remove_toc=False,
-                remove_inline_citations=False,
-                section_filter_mode="exclude",
-                sections=[],
             )
 
         # Verify fetch was called with ar5iv_url for fallback
@@ -229,19 +215,14 @@ class TestLatexFallback:
         """
         query = parse_arxiv_input("hep-th/9901001")
 
+        options = IngestionOptions(force_latex=True)
         result, metadata = await asyncio.wait_for(
             ingest_paper(
                 arxiv_id=query.arxiv_id,
                 version=query.version,
                 html_url=query.html_url,
                 ar5iv_url=query.ar5iv_url,
-                latex_url=query.latex_url,
-                remove_refs=False,
-                remove_toc=False,
-                remove_inline_citations=False,
-                section_filter_mode="exclude",
-                sections=[],
-                force_latex=True,  # Force LaTeX path
+                options=options,
             ),
             timeout=NETWORK_TIMEOUT * 2,  # LaTeX conversion may take longer
         )
@@ -269,7 +250,7 @@ class TestLatexFallback:
         query = parse_arxiv_input("2501.11120v1")
 
         with patch("arxiv2md.ingestion.fetch_arxiv_html") as mock_fetch:
-            mock_fetch.side_effect = RuntimeError(
+            mock_fetch.side_effect = HTMLNotAvailableError(
                 "This paper does not have an HTML version available on arXiv."
             )
 
@@ -279,12 +260,6 @@ class TestLatexFallback:
                     version=query.version,
                     html_url=query.html_url,
                     ar5iv_url=query.ar5iv_url,
-                    latex_url=query.latex_url,
-                    remove_refs=False,
-                    remove_toc=False,
-                    remove_inline_citations=False,
-                    section_filter_mode="exclude",
-                    sections=[],
                 ),
                 timeout=NETWORK_TIMEOUT * 2,
             )
@@ -300,19 +275,14 @@ class TestLatexFallback:
         """Verify that LaTeX conversion produces valid markdown."""
         query = parse_arxiv_input("hep-th/9901001")
 
+        options = IngestionOptions(force_latex=True)
         result, metadata = await asyncio.wait_for(
             ingest_paper(
                 arxiv_id=query.arxiv_id,
                 version=query.version,
                 html_url=query.html_url,
                 ar5iv_url=query.ar5iv_url,
-                latex_url=query.latex_url,
-                remove_refs=False,
-                remove_toc=False,
-                remove_inline_citations=False,
-                section_filter_mode="exclude",
-                sections=[],
-                force_latex=True,  # Force LaTeX path
+                options=options,
             ),
             timeout=NETWORK_TIMEOUT * 2,
         )
@@ -340,19 +310,14 @@ class TestForceLatex:
         """
         query = parse_arxiv_input("2501.11120v1")
 
+        options = IngestionOptions(force_latex=True)
         result, metadata = await asyncio.wait_for(
             ingest_paper(
                 arxiv_id=query.arxiv_id,
                 version=query.version,
                 html_url=query.html_url,
                 ar5iv_url=query.ar5iv_url,
-                latex_url=query.latex_url,
-                remove_refs=False,
-                remove_toc=False,
-                remove_inline_citations=False,
-                section_filter_mode="exclude",
-                sections=[],
-                force_latex=True,
+                options=options,
             ),
             timeout=NETWORK_TIMEOUT * 2,
         )
@@ -372,6 +337,7 @@ class TestForceLatex:
         """Verify that force_latex=True does not attempt HTML fetch."""
         query = parse_arxiv_input("2501.11120v1")
 
+        options = IngestionOptions(force_latex=True)
         with patch("arxiv2md.ingestion.fetch_arxiv_html") as mock_html_fetch:
             result, metadata = await asyncio.wait_for(
                 ingest_paper(
@@ -379,13 +345,7 @@ class TestForceLatex:
                     version=query.version,
                     html_url=query.html_url,
                     ar5iv_url=query.ar5iv_url,
-                    latex_url=query.latex_url,
-                    remove_refs=False,
-                    remove_toc=False,
-                    remove_inline_citations=False,
-                    section_filter_mode="exclude",
-                    sections=[],
-                    force_latex=True,
+                    options=options,
                 ),
                 timeout=NETWORK_TIMEOUT * 2,
             )
@@ -623,12 +583,6 @@ class TestLibraryAPI:
                 version=query.version,
                 html_url=query.html_url,
                 ar5iv_url=query.ar5iv_url,
-                latex_url=query.latex_url,
-                remove_refs=False,
-                remove_toc=False,
-                remove_inline_citations=False,
-                section_filter_mode="exclude",
-                sections=[],
             ),
             timeout=NETWORK_TIMEOUT,
         )
@@ -654,18 +608,20 @@ class TestLibraryAPI:
         """Test ingest_paper with all options enabled."""
         query = parse_arxiv_input("2501.11120v1")
 
+        options = IngestionOptions(
+            remove_refs=True,
+            remove_toc=True,
+            remove_inline_citations=True,
+            section_filter_mode="include",
+            sections=["introduction", "abstract"],
+        )
         result, metadata = await asyncio.wait_for(
             ingest_paper(
                 arxiv_id=query.arxiv_id,
                 version=query.version,
                 html_url=query.html_url,
                 ar5iv_url=query.ar5iv_url,
-                latex_url=query.latex_url,
-                remove_refs=True,
-                remove_toc=True,
-                remove_inline_citations=True,
-                section_filter_mode="include",
-                sections=["introduction", "abstract"],
+                options=options,
             ),
             timeout=NETWORK_TIMEOUT,
         )
@@ -684,19 +640,13 @@ class TestEdgeCases:
         """Test handling of non-existent paper ID."""
         query = parse_arxiv_input("9999.99999")
 
-        with pytest.raises(RuntimeError):
+        with pytest.raises(FetchError):
             await asyncio.wait_for(
                 ingest_paper(
                     arxiv_id=query.arxiv_id,
                     version=query.version,
                     html_url=query.html_url,
                     ar5iv_url=query.ar5iv_url,
-                    latex_url=query.latex_url,
-                    remove_refs=False,
-                    remove_toc=False,
-                    remove_inline_citations=False,
-                    section_filter_mode="exclude",
-                    sections=[],
                 ),
                 timeout=NETWORK_TIMEOUT,
             )
@@ -710,25 +660,22 @@ class TestEdgeCases:
         """
         query = parse_arxiv_input("2501.11120v1")
 
+        options = IngestionOptions(disable_latex_fallback=True)
         with patch("arxiv2md.ingestion.fetch_arxiv_html") as mock_fetch:
-            mock_fetch.side_effect = RuntimeError(
+            mock_fetch.side_effect = HTMLNotAvailableError(
                 "This paper does not have an HTML version available on arXiv."
             )
 
-            with pytest.raises(RuntimeError, match="does not have an HTML version"):
+            with pytest.raises(
+                HTMLNotAvailableError, match="does not have an HTML version"
+            ):
                 await asyncio.wait_for(
                     ingest_paper(
                         arxiv_id=query.arxiv_id,
                         version=query.version,
                         html_url=query.html_url,
                         ar5iv_url=query.ar5iv_url,
-                        latex_url=query.latex_url,
-                        remove_refs=False,
-                        remove_toc=False,
-                        remove_inline_citations=False,
-                        section_filter_mode="exclude",
-                        sections=[],
-                        disable_latex_fallback=True,
+                        options=options,
                     ),
                     timeout=NETWORK_TIMEOUT,
                 )
@@ -749,12 +696,6 @@ class TestMetadataExtraction:
                 version=query.version,
                 html_url=query.html_url,
                 ar5iv_url=query.ar5iv_url,
-                latex_url=query.latex_url,
-                remove_refs=False,
-                remove_toc=False,
-                remove_inline_citations=False,
-                section_filter_mode="exclude",
-                sections=[],
             ),
             timeout=NETWORK_TIMEOUT,
         )
@@ -777,19 +718,14 @@ class TestMetadataExtraction:
         """Test that metadata is correctly extracted from LaTeX papers."""
         query = parse_arxiv_input("hep-th/9901001")
 
+        options = IngestionOptions(force_latex=True)
         result, metadata = await asyncio.wait_for(
             ingest_paper(
                 arxiv_id=query.arxiv_id,
                 version=query.version,
                 html_url=query.html_url,
                 ar5iv_url=query.ar5iv_url,
-                latex_url=query.latex_url,
-                remove_refs=False,
-                remove_toc=False,
-                remove_inline_citations=False,
-                section_filter_mode="exclude",
-                sections=[],
-                force_latex=True,  # Force LaTeX to test extraction
+                options=options,
             ),
             timeout=NETWORK_TIMEOUT * 2,
         )

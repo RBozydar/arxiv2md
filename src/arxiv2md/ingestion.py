@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
+from dataclasses import dataclass, field
+from typing import Literal
+
+from arxiv2md.exceptions import HTMLNotAvailableError
 from arxiv2md.fetch import fetch_arxiv_html
 from arxiv2md.html_parser import parse_arxiv_html
 from arxiv2md.latex_fetch import fetch_arxiv_source
@@ -19,20 +24,37 @@ _REFERENCE_TITLES = ("references", "bibliography")
 _ABSTRACT_TITLE = "abstract"
 
 
+@dataclass
+class IngestionOptions:
+    """Options for paper ingestion.
+
+    Attributes:
+        remove_refs: If True, remove references/bibliography sections.
+        remove_toc: If True, exclude table of contents from output.
+        remove_inline_citations: If True, completely remove inline citation
+            links from the output.
+        section_filter_mode: Mode for section filtering ("include" or "exclude").
+        sections: List of section names to include or exclude.
+        force_latex: If True, skip HTML fetching and use LaTeX source directly.
+        disable_latex_fallback: If True, do not fall back to LaTeX on HTML failure.
+    """
+
+    remove_refs: bool = False
+    remove_toc: bool = False
+    remove_inline_citations: bool = False
+    section_filter_mode: Literal["include", "exclude"] = "exclude"
+    sections: list[str] = field(default_factory=list)
+    force_latex: bool = False
+    disable_latex_fallback: bool = False
+
+
 async def ingest_paper(
     *,
     arxiv_id: str,
     version: str | None,
     html_url: str,
     ar5iv_url: str | None = None,
-    latex_url: str | None = None,
-    remove_refs: bool,
-    remove_toc: bool,
-    remove_inline_citations: bool = False,
-    section_filter_mode: str,
-    sections: list[str],
-    force_latex: bool = False,
-    disable_latex_fallback: bool = False,
+    options: IngestionOptions | None = None,
 ) -> tuple[IngestionResult, dict[str, str | list[str] | None]]:
     """Fetch, parse, and serialize an arXiv paper into Markdown.
 
@@ -40,49 +62,29 @@ async def ingest_paper(
     If neither HTML source is available, falls back to fetching LaTeX
     source and converting via pandoc.
 
-    Parameters
-    ----------
-    arxiv_id : str
-        The arXiv paper identifier.
-    version : str | None
-        Optional version string (e.g., "v1").
-    html_url : str
-        Primary HTML URL (arxiv.org).
-    ar5iv_url : str | None
-        Fallback ar5iv HTML URL.
-    latex_url : str | None
-        LaTeX source URL for fallback conversion (not directly used,
-        but included for consistency with ArxivQuery).
-    remove_refs : bool
-        If True, remove references/bibliography sections.
-    remove_toc : bool
-        If True, exclude table of contents from output.
-    remove_inline_citations : bool
-        If True, completely remove inline citation links from the output.
-        If False (default), citation URLs are stripped but text is kept.
-    section_filter_mode : str
-        Mode for section filtering ("include" or "exclude").
-    sections : list[str]
-        List of section names to include or exclude.
-    force_latex : bool
-        If True, skip HTML fetching and use LaTeX source directly.
-    disable_latex_fallback : bool
-        If True, do not fall back to LaTeX on HTML failure (raise error instead).
+    Args:
+        arxiv_id: The arXiv paper identifier.
+        version: Optional version string (e.g., "v1").
+        html_url: Primary HTML URL (arxiv.org).
+        ar5iv_url: Fallback ar5iv HTML URL.
+        options: Processing options for ingestion. Uses defaults if None.
 
-    Returns
-    -------
-    tuple[IngestionResult, dict[str, str | list[str] | None]]
+    Returns:
         Tuple of (result, metadata) where metadata includes source type.
+
+    Raises:
+        RuntimeError: If fetching fails and fallback is disabled or unavailable.
     """
+    opts = options or IngestionOptions()
     source = "html"
 
     # Force LaTeX mode: skip HTML entirely
-    if force_latex:
+    if opts.force_latex:
         source = "latex"
         result, metadata = await _ingest_from_latex(
             arxiv_id=arxiv_id,
             version=version,
-            remove_toc=remove_toc,
+            remove_toc=opts.remove_toc,
         )
         metadata["source"] = source
         return result, metadata
@@ -96,12 +98,9 @@ async def ingest_paper(
             ar5iv_url=ar5iv_url,
         )
         parsed = parse_arxiv_html(html)
-    except RuntimeError as exc:
-        if "does not have an HTML version" not in str(exc):
-            raise
-
+    except HTMLNotAvailableError:
         # If LaTeX fallback is disabled, re-raise the error
-        if disable_latex_fallback:
+        if opts.disable_latex_fallback:
             raise
 
         # Fallback to LaTeX source conversion
@@ -109,29 +108,29 @@ async def ingest_paper(
         result, metadata = await _ingest_from_latex(
             arxiv_id=arxiv_id,
             version=version,
-            remove_toc=remove_toc,
+            remove_toc=opts.remove_toc,
         )
         metadata["source"] = source
         return result, metadata
 
     filtered_sections = filter_sections(
-        parsed.sections, mode=section_filter_mode, selected=sections
+        parsed.sections, mode=opts.section_filter_mode, selected=opts.sections
     )
-    if remove_refs:
+    if opts.remove_refs:
         filtered_sections = filter_sections(
             filtered_sections, mode="exclude", selected=_REFERENCE_TITLES
         )
 
     # Check if abstract should be included based on section filter
-    selected_lower = [s.lower() for s in sections]
-    if section_filter_mode == "exclude":
+    selected_lower = [s.lower() for s in opts.sections]
+    if opts.section_filter_mode == "exclude":
         include_abstract = _ABSTRACT_TITLE not in selected_lower
     else:  # include mode
-        include_abstract = not sections or _ABSTRACT_TITLE in selected_lower
+        include_abstract = not opts.sections or _ABSTRACT_TITLE in selected_lower
 
     for section in filtered_sections:
         _populate_section_markdown(
-            section, remove_inline_citations=remove_inline_citations
+            section, remove_inline_citations=opts.remove_inline_citations
         )
 
     result = format_paper(
@@ -141,7 +140,7 @@ async def ingest_paper(
         authors=parsed.authors,
         abstract=parsed.abstract if include_abstract else None,
         sections=filtered_sections,
-        include_toc=not remove_toc,
+        include_toc=not opts.remove_toc,
         include_abstract_in_tree=parsed.abstract is not None,
         source=source,
     )
@@ -179,8 +178,8 @@ async def _ingest_from_latex(
     source_dir = await fetch_arxiv_source(arxiv_id, version)
     main_tex = detect_main_tex(source_dir)
 
-    # Convert LaTeX to Markdown via pandoc
-    markdown_content = convert_latex_to_markdown(main_tex)
+    # Convert LaTeX to Markdown via pandoc (blocking call wrapped in thread)
+    markdown_content = await asyncio.to_thread(convert_latex_to_markdown, main_tex)
 
     # Extract metadata from LaTeX source
     tex_content = main_tex.read_text(errors="replace")

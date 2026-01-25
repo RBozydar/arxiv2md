@@ -7,7 +7,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-from arxiv2md.ingestion import ingest_paper
+from arxiv2md.ingestion import IngestionOptions, ingest_paper
 from arxiv2md.query_parser import parse_arxiv_input
 
 DEFAULT_OUTPUT_FILE = "digest.txt"
@@ -29,12 +29,7 @@ async def _async_main(args: argparse.Namespace) -> None:
     query = parse_arxiv_input(args.input_text)
 
     sections = _collect_sections(args.sections, args.section)
-    result, _metadata = await ingest_paper(
-        arxiv_id=query.arxiv_id,
-        version=query.version,
-        html_url=query.html_url,
-        ar5iv_url=query.ar5iv_url,
-        latex_url=query.latex_url,
+    options = IngestionOptions(
         remove_refs=args.remove_refs,
         remove_toc=args.remove_toc,
         remove_inline_citations=args.remove_inline_citations,
@@ -42,6 +37,13 @@ async def _async_main(args: argparse.Namespace) -> None:
         sections=sections,
         force_latex=args.latex,
         disable_latex_fallback=args.no_latex_fallback,
+    )
+    result, _metadata = await ingest_paper(
+        arxiv_id=query.arxiv_id,
+        version=query.version,
+        html_url=query.html_url,
+        ar5iv_url=query.ar5iv_url,
+        options=options,
     )
 
     output_text = _format_output(

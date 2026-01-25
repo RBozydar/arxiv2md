@@ -13,9 +13,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
+from arxiv2md.cache_utils import is_cache_fresh
+from arxiv2md.exceptions import ExtractionError, FetchError, SourceNotAvailableError
 from arxiv2md.latex_fetch import (
     _extract_source_bundle,
-    _is_cache_fresh,
     fetch_arxiv_source,
 )
 
@@ -234,47 +235,51 @@ class TestFetchArxivSource:
         success_response.content = gz_bytes
         success_response.raise_for_status = MagicMock()
 
-        with patch("arxiv2md.latex_fetch.ARXIV2MD_CACHE_PATH", tmp_path):
-            with patch("arxiv2md.latex_fetch.ARXIV2MD_FETCH_MAX_RETRIES", 2):
-                with patch("arxiv2md.latex_fetch.ARXIV2MD_FETCH_BACKOFF_S", 0.01):
-                    with patch("httpx.AsyncClient") as mock_client_class:
-                        mock_client = AsyncMock()
-                        mock_client.get = AsyncMock(
-                            side_effect=[fail_response, fail_response, success_response]
-                        )
-                        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-                        mock_client.__aexit__ = AsyncMock(return_value=None)
-                        mock_client_class.return_value = mock_client
+        with (
+            patch("arxiv2md.latex_fetch.ARXIV2MD_CACHE_PATH", tmp_path),
+            patch("arxiv2md.http_utils.ARXIV2MD_FETCH_MAX_RETRIES", 2),
+            patch("arxiv2md.http_utils.ARXIV2MD_FETCH_BACKOFF_S", 0.01),
+            patch("arxiv2md.http_utils.httpx.AsyncClient") as mock_client_class,
+        ):
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                side_effect=[fail_response, fail_response, success_response]
+            )
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=None)
+            mock_client_class.return_value = mock_client
 
-                        result = await fetch_arxiv_source("2401.12345", "v1")
+            result = await fetch_arxiv_source("2401.12345", "v1")
 
         assert result.exists()
         assert (result / "main.tex").exists()
 
     @pytest.mark.asyncio
     async def test_raises_on_404_response(self, tmp_path: Path) -> None:
-        """Raises RuntimeError on 404 response after retries."""
+        """Raises SourceNotAvailableError on 404 response."""
         mock_response = MagicMock()
         mock_response.status_code = 404
 
-        with patch("arxiv2md.latex_fetch.ARXIV2MD_CACHE_PATH", tmp_path):
-            with patch("arxiv2md.latex_fetch.ARXIV2MD_FETCH_MAX_RETRIES", 2):
-                with patch("arxiv2md.latex_fetch.ARXIV2MD_FETCH_BACKOFF_S", 0.01):
-                    with patch("httpx.AsyncClient") as mock_client_class:
-                        mock_client = AsyncMock()
-                        mock_client.get = AsyncMock(return_value=mock_response)
-                        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-                        mock_client.__aexit__ = AsyncMock(return_value=None)
-                        mock_client_class.return_value = mock_client
+        with (
+            patch("arxiv2md.latex_fetch.ARXIV2MD_CACHE_PATH", tmp_path),
+            patch("arxiv2md.http_utils.ARXIV2MD_FETCH_MAX_RETRIES", 2),
+            patch("arxiv2md.http_utils.ARXIV2MD_FETCH_BACKOFF_S", 0.01),
+            patch("arxiv2md.http_utils.httpx.AsyncClient") as mock_client_class,
+        ):
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=None)
+            mock_client_class.return_value = mock_client
 
-                        with pytest.raises(
-                            RuntimeError, match="Source bundle not found"
-                        ):
-                            await fetch_arxiv_source("nonexistent.12345", "v1")
+            with pytest.raises(
+                SourceNotAvailableError, match="Source bundle not found"
+            ):
+                await fetch_arxiv_source("nonexistent.12345", "v1")
 
     @pytest.mark.asyncio
     async def test_raises_after_max_retries(self, tmp_path: Path) -> None:
-        """Raises RuntimeError after exhausting all retries."""
+        """Raises FetchError after exhausting all retries."""
         fail_response = MagicMock()
         fail_response.status_code = 503
         fail_response.raise_for_status = MagicMock(
@@ -283,23 +288,23 @@ class TestFetchArxivSource:
             )
         )
 
-        with patch("arxiv2md.latex_fetch.ARXIV2MD_CACHE_PATH", tmp_path):
-            with patch("arxiv2md.latex_fetch.ARXIV2MD_FETCH_MAX_RETRIES", 2):
-                with patch("arxiv2md.latex_fetch.ARXIV2MD_FETCH_BACKOFF_S", 0.01):
-                    with patch("httpx.AsyncClient") as mock_client_class:
-                        mock_client = AsyncMock()
-                        mock_client.get = AsyncMock(return_value=fail_response)
-                        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-                        mock_client.__aexit__ = AsyncMock(return_value=None)
-                        mock_client_class.return_value = mock_client
+        with (
+            patch("arxiv2md.latex_fetch.ARXIV2MD_CACHE_PATH", tmp_path),
+            patch("arxiv2md.http_utils.ARXIV2MD_FETCH_MAX_RETRIES", 2),
+            patch("arxiv2md.http_utils.ARXIV2MD_FETCH_BACKOFF_S", 0.01),
+            patch("arxiv2md.http_utils.httpx.AsyncClient") as mock_client_class,
+        ):
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(return_value=fail_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=None)
+            mock_client_class.return_value = mock_client
 
-                        with pytest.raises(
-                            RuntimeError, match="Failed to fetch source bundle"
-                        ):
-                            await fetch_arxiv_source("2401.12345", "v1")
+            with pytest.raises(FetchError, match="Failed to fetch"):
+                await fetch_arxiv_source("2401.12345", "v1")
 
-                        # Should have retried max_retries + 1 times total
-                        assert mock_client.get.call_count == 3
+            # Should have retried max_retries + 1 times total
+            assert mock_client.get.call_count == 3
 
     @pytest.mark.asyncio
     async def test_retries_on_request_error(self, tmp_path: Path) -> None:
@@ -312,22 +317,24 @@ class TestFetchArxivSource:
         success_response.content = gz_bytes
         success_response.raise_for_status = MagicMock()
 
-        with patch("arxiv2md.latex_fetch.ARXIV2MD_CACHE_PATH", tmp_path):
-            with patch("arxiv2md.latex_fetch.ARXIV2MD_FETCH_MAX_RETRIES", 2):
-                with patch("arxiv2md.latex_fetch.ARXIV2MD_FETCH_BACKOFF_S", 0.01):
-                    with patch("httpx.AsyncClient") as mock_client_class:
-                        mock_client = AsyncMock()
-                        mock_client.get = AsyncMock(
-                            side_effect=[
-                                httpx.RequestError("Connection failed"),
-                                success_response,
-                            ]
-                        )
-                        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-                        mock_client.__aexit__ = AsyncMock(return_value=None)
-                        mock_client_class.return_value = mock_client
+        with (
+            patch("arxiv2md.latex_fetch.ARXIV2MD_CACHE_PATH", tmp_path),
+            patch("arxiv2md.http_utils.ARXIV2MD_FETCH_MAX_RETRIES", 2),
+            patch("arxiv2md.http_utils.ARXIV2MD_FETCH_BACKOFF_S", 0.01),
+            patch("arxiv2md.http_utils.httpx.AsyncClient") as mock_client_class,
+        ):
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                side_effect=[
+                    httpx.RequestError("Connection failed"),
+                    success_response,
+                ]
+            )
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=None)
+            mock_client_class.return_value = mock_client
 
-                        result = await fetch_arxiv_source("2401.12345", "v1")
+            result = await fetch_arxiv_source("2401.12345", "v1")
 
         assert result.exists()
 
@@ -410,15 +417,105 @@ class TestExtractSourceBundle:
         assert not (dest_dir / "etc" / "passwd").exists()
         assert not (dest_dir / "etc").exists()
 
+    def test_filters_symlinks_in_tar(self, tmp_path: Path) -> None:
+        """Filters out symlinks from tar archives to prevent path traversal."""
+        tar_buffer = io.BytesIO()
+        with tarfile.open(fileobj=tar_buffer, mode="w:gz") as tar:
+            # Safe file
+            safe_content = b"\\documentclass{article}"
+            safe_info = tarfile.TarInfo(name="safe.tex")
+            safe_info.size = len(safe_content)
+            tar.addfile(safe_info, io.BytesIO(safe_content))
+
+            # Unsafe: symlink pointing outside extraction directory
+            symlink_info = tarfile.TarInfo(name="evil_link")
+            symlink_info.type = tarfile.SYMTYPE
+            symlink_info.linkname = "/etc/passwd"
+            tar.addfile(symlink_info)
+        tar_bytes = tar_buffer.getvalue()
+
+        dest_dir = tmp_path / "extracted"
+        dest_dir.mkdir()
+
+        _extract_source_bundle(tar_bytes, dest_dir)
+
+        # Safe file should exist
+        assert (dest_dir / "safe.tex").exists()
+        # Symlink should NOT have been extracted
+        assert not (dest_dir / "evil_link").exists()
+
+    def test_filters_hardlinks_in_tar(self, tmp_path: Path) -> None:
+        """Filters out hardlinks from tar archives to prevent path traversal."""
+        tar_buffer = io.BytesIO()
+        with tarfile.open(fileobj=tar_buffer, mode="w:gz") as tar:
+            # Safe file
+            safe_content = b"\\documentclass{article}"
+            safe_info = tarfile.TarInfo(name="safe.tex")
+            safe_info.size = len(safe_content)
+            tar.addfile(safe_info, io.BytesIO(safe_content))
+
+            # Unsafe: hardlink
+            hardlink_info = tarfile.TarInfo(name="evil_hardlink")
+            hardlink_info.type = tarfile.LNKTYPE
+            hardlink_info.linkname = "/etc/passwd"
+            tar.addfile(hardlink_info)
+        tar_bytes = tar_buffer.getvalue()
+
+        dest_dir = tmp_path / "extracted"
+        dest_dir.mkdir()
+
+        _extract_source_bundle(tar_bytes, dest_dir)
+
+        # Safe file should exist
+        assert (dest_dir / "safe.tex").exists()
+        # Hardlink should NOT have been extracted
+        assert not (dest_dir / "evil_hardlink").exists()
+
+    def test_filters_device_files_in_tar(self, tmp_path: Path) -> None:
+        """Filters out device files from tar archives."""
+        tar_buffer = io.BytesIO()
+        with tarfile.open(fileobj=tar_buffer, mode="w:gz") as tar:
+            # Safe file
+            safe_content = b"\\documentclass{article}"
+            safe_info = tarfile.TarInfo(name="safe.tex")
+            safe_info.size = len(safe_content)
+            tar.addfile(safe_info, io.BytesIO(safe_content))
+
+            # Unsafe: block device
+            blkdev_info = tarfile.TarInfo(name="evil_blkdev")
+            blkdev_info.type = tarfile.BLKTYPE
+            blkdev_info.devmajor = 8
+            blkdev_info.devminor = 0
+            tar.addfile(blkdev_info)
+
+            # Unsafe: character device
+            chrdev_info = tarfile.TarInfo(name="evil_chrdev")
+            chrdev_info.type = tarfile.CHRTYPE
+            chrdev_info.devmajor = 1
+            chrdev_info.devminor = 3
+            tar.addfile(chrdev_info)
+        tar_bytes = tar_buffer.getvalue()
+
+        dest_dir = tmp_path / "extracted"
+        dest_dir.mkdir()
+
+        _extract_source_bundle(tar_bytes, dest_dir)
+
+        # Safe file should exist
+        assert (dest_dir / "safe.tex").exists()
+        # Device files should NOT have been extracted
+        assert not (dest_dir / "evil_blkdev").exists()
+        assert not (dest_dir / "evil_chrdev").exists()
+
     def test_raises_on_unrecognized_format(self, tmp_path: Path) -> None:
-        """Raises RuntimeError for unrecognized bundle formats."""
+        """Raises ExtractionError for unrecognized bundle formats."""
         # Random binary data that's not valid tar, gzip, or LaTeX
         garbage_bytes = b"\x00\x01\x02\x03\x04\x05\x06\x07"
 
         dest_dir = tmp_path / "extracted"
         dest_dir.mkdir()
 
-        with pytest.raises(RuntimeError, match="Unable to extract source bundle"):
+        with pytest.raises(ExtractionError, match="Unable to extract source bundle"):
             _extract_source_bundle(garbage_bytes, dest_dir)
 
     def test_extracts_nested_directories_in_tar(self, tmp_path: Path) -> None:
@@ -455,21 +552,20 @@ class TestExtractSourceBundle:
 
 
 class TestIsCacheFresh:
-    """Tests for _is_cache_fresh function."""
+    """Tests for is_cache_fresh function."""
 
     def test_returns_false_when_marker_missing(self, tmp_path: Path) -> None:
         """Returns False when marker file does not exist."""
         marker_path = tmp_path / ".source_extracted"
 
-        assert not _is_cache_fresh(marker_path)
+        assert not is_cache_fresh(marker_path, ttl_seconds=86400)
 
     def test_returns_true_when_marker_is_new(self, tmp_path: Path) -> None:
         """Returns True when marker file is within TTL."""
         marker_path = tmp_path / ".source_extracted"
         marker_path.write_text(datetime.now(timezone.utc).isoformat())
 
-        with patch("arxiv2md.latex_fetch.ARXIV2MD_CACHE_TTL_SECONDS", 86400):
-            assert _is_cache_fresh(marker_path)
+        assert is_cache_fresh(marker_path, ttl_seconds=86400)
 
     def test_returns_false_when_marker_is_stale(self, tmp_path: Path) -> None:
         """Returns False when marker file is older than TTL."""
@@ -483,8 +579,7 @@ class TestIsCacheFresh:
         old_time = time.time() - 100000  # Very old
         os.utime(marker_path, (old_time, old_time))
 
-        with patch("arxiv2md.latex_fetch.ARXIV2MD_CACHE_TTL_SECONDS", 1):
-            assert not _is_cache_fresh(marker_path)
+        assert not is_cache_fresh(marker_path, ttl_seconds=1)
 
     def test_returns_true_when_ttl_disabled(self, tmp_path: Path) -> None:
         """Returns True when TTL is set to 0 or negative (cache forever)."""
@@ -498,8 +593,5 @@ class TestIsCacheFresh:
         old_time = time.time() - 100000
         os.utime(marker_path, (old_time, old_time))
 
-        with patch("arxiv2md.latex_fetch.ARXIV2MD_CACHE_TTL_SECONDS", 0):
-            assert _is_cache_fresh(marker_path)
-
-        with patch("arxiv2md.latex_fetch.ARXIV2MD_CACHE_TTL_SECONDS", -1):
-            assert _is_cache_fresh(marker_path)
+        assert is_cache_fresh(marker_path, ttl_seconds=0)
+        assert is_cache_fresh(marker_path, ttl_seconds=-1)
