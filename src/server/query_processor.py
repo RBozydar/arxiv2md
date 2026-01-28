@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Literal, cast
 
 from arxiv2md.config import ARXIV2MD_CACHE_PATH
-from arxiv2md.ingestion import ingest_paper
+from arxiv2md.ingestion import IngestionOptions, ingest_paper
 from arxiv2md.query_parser import parse_arxiv_input
 from arxiv2md.utils.logging_config import get_logger
 from server.models import (
@@ -64,14 +64,19 @@ async def process_query(
         )
         return IngestErrorResponse(error=str(exc))
 
-    query = query.model_copy(
-        update={
-            "remove_refs": remove_refs,
-            "remove_toc": remove_toc,
-            "remove_inline_citations": remove_inline_citations,
-            "section_filter_mode": section_filter_mode,
-            "sections": sections or [],
-        }
+    filter_mode = cast(
+        Literal["include", "exclude"],
+        section_filter_mode
+        if section_filter_mode in ("include", "exclude")
+        else "exclude",
+    )
+    sections_list = sections or []
+    options = IngestionOptions(
+        remove_refs=remove_refs,
+        remove_toc=remove_toc,
+        remove_inline_citations=remove_inline_citations,
+        section_filter_mode=filter_mode,
+        sections=sections_list,
     )
 
     try:
@@ -80,12 +85,7 @@ async def process_query(
             version=query.version,
             html_url=query.html_url,
             ar5iv_url=query.ar5iv_url,
-            latex_url=query.latex_url,
-            remove_refs=query.remove_refs,
-            remove_toc=query.remove_toc,
-            remove_inline_citations=query.remove_inline_citations,
-            section_filter_mode=query.section_filter_mode,
-            sections=query.sections,
+            options=options,
         )
         summary = result.summary
         tree = result.sections_tree
@@ -120,7 +120,7 @@ async def process_query(
         remove_refs=remove_refs,
         remove_toc=remove_toc,
         section_filter_mode=section_filter_mode,
-        sections=query.sections,
+        sections=sections_list,
     )
 
 
